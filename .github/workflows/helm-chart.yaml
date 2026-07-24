@@ -1,0 +1,89 @@
+name: Helm chart
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/helm-chart.yaml
+      - charts/takserver/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/helm-chart.yaml
+      - charts/takserver/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Helm ${{ matrix.helm-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        helm-version:
+          - v3.21.0
+          - v4.2.0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ matrix.helm-version }}
+
+      - name: Build dependencies
+        run: helm dependency build ./charts/takserver
+
+      - name: Lint default values
+        run: helm lint --strict ./charts/takserver
+
+      - name: Lint development values
+        run: helm lint --strict ./charts/takserver -f ./charts/takserver/values-development.yaml
+
+      - name: Lint Iron Bank values
+        run: helm lint --strict ./charts/takserver -f ./charts/takserver/values-ironbank.yaml
+
+      - name: Render default and development manifests
+        run: |
+          helm template takserver ./charts/takserver --namespace takserver >/dev/null
+          helm template takserver ./charts/takserver --namespace takserver \
+            -f ./charts/takserver/values-development.yaml >/dev/null
+          helm template takserver ./charts/takserver --namespace takserver \
+            -f ./charts/takserver/values-ironbank.yaml >/dev/null
+
+      - name: Verify existing ServiceAccount support
+        run: |
+          manifest=$(helm template takserver ./charts/takserver --namespace takserver \
+            --set serviceAccount.create=false \
+            --set serviceAccount.name=takserver-existing)
+          grep -q 'serviceAccountName: takserver-existing' <<<"$manifest"
+          if grep -A3 '^kind: ServiceAccount$' <<<"$manifest" | grep -q 'name: takserver-existing'; then
+            echo 'Chart unexpectedly created the existing ServiceAccount.' >&2
+            exit 1
+          fi
+
+      - name: Verify unknown values are rejected
+        run: |
+          if helm lint ./charts/takserver --set worklods.api.replicas=2; then
+            echo 'Schema accepted an unknown top-level value.' >&2
+            exit 1
+          fi
+
+      - name: Verify unsafe combinations are rejected
+        run: |
+          if helm template takserver ./charts/takserver \
+            --set workloads.api.autoscaling.enabled=true >/dev/null; then
+            echo 'CPU HPA rendered without a CPU request.' >&2
+            exit 1
+          fi
+          if helm template takserver ./charts/takserver \
+            --set database.migration.hook=true >/dev/null; then
+            echo 'Migration hook rendered without an existing credential Secret.' >&2
+            exit 1
+          fi
+
+      - name: Package chart
+        run: helm package ./charts/takserver --destination /tmp

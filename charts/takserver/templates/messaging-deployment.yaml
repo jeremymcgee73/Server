@@ -1,0 +1,13 @@
+{{- include "takserver.deployment" (dict "root" . "role" (dict
+  "name" "messaging"
+  "command" (list "sh" "takserver-messaging-cluster.sh")
+  "healthPort" 10800
+  "postgres" true
+  "ignite" true
+  "core" true
+  "ports" (list
+    (dict "name" "tls-8089" "containerPort" 8089)
+    (dict "name" "fedv1-9000" "containerPort" 9000)
+    (dict "name" "fedv2-9001" "containerPort" 9001)
+  )
+)) }}

@@ -1,0 +1,31 @@
+{{- include "takserver.validateValues" . -}}
+{{- $annotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.service.annotations -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "takserver.fullname" . }}-api
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+{{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "takserver.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  ports:
+    - name: https-8443
+      port: 8443
+      targetPort: https-8443
+    - name: fed-8444
+      port: 8444
+      targetPort: fed-8444
+    - name: certs-8446
+      port: 8446
+      targetPort: certs-8446
+    - name: http-8080
+      port: 8080
+      targetPort: http-8080

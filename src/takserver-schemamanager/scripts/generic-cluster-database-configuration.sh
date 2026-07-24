@@ -1,12 +1,13 @@
 #!/bin/bash
 
+set -e
+
 DB_URL=jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
 
-# Wait for the server to become available
-RVAL=-1
-while [ $RVAL != 0 ];do
-    nc -zw3 ${POSTGRES_HOST} ${POSTGRES_PORT}
-    RVAL=$?
+# Wait for the server to become available. Commands used as an `until`
+# condition are exempt from `set -e`, so connection retries remain safe while
+# actual schema setup failures stop the job.
+until nc -zw3 "${POSTGRES_HOST}" "${POSTGRES_PORT}"; do
     sleep 1
 done
 

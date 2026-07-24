@@ -1,0 +1,150 @@
+{{- $bootstrap := .Values.certificates.bootstrap -}}
+{{- $enabled := and $bootstrap.enabled (not .Values.config.existing.certificates) (eq (len .Values.config.certificates) 0) -}}
+{{- if $enabled }}
+{{- $fullname := include "takserver.fullname" . -}}
+{{- $secretName := include "takserver.certificateSecretName" . -}}
+{{- $serviceAccountName := include "takserver.certificateBootstrapServiceAccountName" . -}}
+{{- $jobHashInput := dict
+  "bootstrap" $bootstrap
+  "caSetupImage" .Values.images.caSetup
+  "podSecurityContext" .Values.podSecurityContext
+  "securityContext" .Values.securityContext
+  "podLabels" .Values.podLabels
+  "podAnnotations" .Values.podAnnotations
+  "commonLabels" .Values.commonLabels
+  "imagePullSecrets" .Values.imagePullSecrets
+  "chartVersion" .Chart.Version
+  "appVersion" .Chart.AppVersion
+-}}
+{{- $jobHash := toJson $jobHashInput | sha256sum | trunc 8 -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-certificate-bootstrap-%s" $fullname $jobHash | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: certificate-bootstrap
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  backoffLimit: {{ $bootstrap.backoffLimit }}
+{{- if $bootstrap.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ $bootstrap.ttlSecondsAfterFinished }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "takserver.labels" . | nindent 8 }}
+        app.kubernetes.io/component: certificate-bootstrap
+{{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      automountServiceAccountToken: true
+      restartPolicy: Never
+{{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      initContainers:
+        - name: generate-certificates
+          image: {{ include "takserver.image" (dict "image" .Values.images.caSetup) | quote }}
+          imagePullPolicy: {{ .Values.images.caSetup.pullPolicy }}
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              cd /
+              ./generateClusterCerts.sh
+              chmod a+r /files/*.jks /files/*.p12 /files/*.pem
+          env:
+            - name: CA_NAME
+              value: {{ $bootstrap.caName | quote }}
+            - name: STATE
+              value: {{ $bootstrap.state | quote }}
+            - name: CITY
+              value: {{ $bootstrap.city | quote }}
+            - name: ORGANIZATION
+              value: {{ $bootstrap.organization | quote }}
+            - name: ORGANIZATIONAL_UNIT
+              value: {{ $bootstrap.organizationalUnit | quote }}
+          resources:
+            {{- toYaml $bootstrap.resources | nindent 12 }}
+{{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          volumeMounts:
+            - name: generated-certificates
+              mountPath: /files
+      containers:
+        - name: publish-secret
+          image: {{ include "takserver.image" (dict "image" $bootstrap.publisherImage) | quote }}
+          imagePullPolicy: {{ $bootstrap.publisherImage.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              api="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS}"
+              token_file=/var/run/secrets/kubernetes.io/serviceaccount/token
+              ca_file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              auth="Authorization: Bearer $(cat "$token_file")"
+              secret_url="${api}/api/v1/namespaces/${POD_NAMESPACE}/secrets/${SECRET_NAME}"
+
+              status=$(curl --silent --show-error --cacert "$ca_file" \
+                --header "$auth" --output /tmp/existing-secret \
+                --write-out '%{http_code}' "$secret_url")
+              if [ "$status" = 200 ]; then
+                echo "Certificate Secret ${SECRET_NAME} already exists; leaving it unchanged."
+                exit 0
+              fi
+              if [ "$status" != 404 ]; then
+                cat /tmp/existing-secret >&2
+                exit 1
+              fi
+
+              encode() { base64 "$1" | tr -d '\n'; }
+              cat >/tmp/secret.json <<EOF
+              {"apiVersion":"v1","kind":"Secret","metadata":{"name":"${SECRET_NAME}","namespace":"${POD_NAMESPACE}","labels":{"app.kubernetes.io/instance":"{{ .Release.Name }}","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/component":"certificate-bootstrap"}},"type":"Opaque","data":{"takserver.jks":"$(encode /files/takserver.jks)","truststore-root.jks":"$(encode /files/truststore-root.jks)","fed-truststore.jks":"$(encode /files/fed-truststore.jks)","admin.p12":"$(encode /files/admin.p12)","admin.pem":"$(encode /files/admin.pem)"}}
+              EOF
+
+              status=$(curl --silent --show-error --cacert "$ca_file" \
+                --header "$auth" --header 'Content-Type: application/json' \
+                --request POST --data-binary @/tmp/secret.json \
+                --output /tmp/create-secret --write-out '%{http_code}' \
+                "${api}/api/v1/namespaces/${POD_NAMESPACE}/secrets")
+              if [ "$status" != 201 ]; then
+                cat /tmp/create-secret >&2
+                exit 1
+              fi
+              echo "Created certificate Secret ${SECRET_NAME}."
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SECRET_NAME
+              value: {{ $secretName | quote }}
+          resources:
+            {{- toYaml $bootstrap.publisherResources | nindent 12 }}
+{{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          volumeMounts:
+            - name: generated-certificates
+              mountPath: /files
+              readOnly: true
+      volumes:
+        - name: generated-certificates
+          emptyDir: {}
+{{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,65 @@
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 2
+
+image:
+  repository: takserver-ignite
+  tag: dev-amd64
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+extraVolumes: []
+extraVolumeMounts: []
+commonLabels: {}
+commonAnnotations: {}
+podLabels: {}
+podAnnotations: {}
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: true
+rbac:
+  create: true
+
+peerClassLoadingEnabled: false
+jvmOptions: -Xms256m -Xmx512m -Djava.net.preferIPv4Stack=true
+resources: {}
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+terminationGracePeriodSeconds: 60
+revisionHistoryLimit: 10
+updateStrategy: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+runtimeClassName: ""
+schedulerName: ""
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: ""
+  maxUnavailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress: []
+
+persistence:
+  enabled: false
+  size: 8Gi
+  storageClass: ""

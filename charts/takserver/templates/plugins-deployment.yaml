@@ -1,0 +1,9 @@
+{{- include "takserver.deployment" (dict "root" . "role" (dict
+  "name" "plugins"
+  "command" (list "sh" "takserver-plugins-cluster.sh")
+  "healthPort" 10800
+  "postgres" false
+  "ignite" true
+  "core" false
+  "ports" (list)
+)) }}

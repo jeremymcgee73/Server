@@ -1,0 +1,27 @@
+{{- $annotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.service.annotations -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "takserver.fullname" . }}-messaging
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: messaging
+{{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "takserver.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: messaging
+  ports:
+    - name: tls-8089
+      port: 8089
+      targetPort: tls-8089
+    - name: fedv1-9000
+      port: 9000
+      targetPort: fedv1-9000
+    - name: fedv2-9001
+      port: 9001
+      targetPort: fedv2-9001

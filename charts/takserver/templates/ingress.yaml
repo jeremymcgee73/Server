@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+{{- $annotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.ingress.annotations }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "takserver.fullname" . }}
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+{{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+{{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "takserver.fullname" . }}-api
+                port:
+{{- if kindIs "string" .Values.ingress.servicePort }}
+                  name: {{ .Values.ingress.servicePort }}
+{{- else }}
+                  number: {{ .Values.ingress.servicePort }}
+{{- end }}
+{{- end }}

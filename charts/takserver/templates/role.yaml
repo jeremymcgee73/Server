@@ -1,0 +1,25 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "takserver.fullname" . }}
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+{{- if and .Values.database.migration.enabled (not .Values.database.migration.hook) }}
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    resourceNames: [{{ include "takserver.databaseMigrationJobName" . | quote }}]
+    verbs: ["get"]
+{{- end }}
+{{- end }}

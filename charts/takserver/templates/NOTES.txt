@@ -1,0 +1,46 @@
+TAK Server {{ .Chart.Version }} was installed as {{ include "takserver.fullname" . }}.
+
+Database mode: {{ .Values.database.mode }}
+Service type: {{ .Values.service.type }}
+Ingress: {{ ternary "enabled" "disabled" .Values.ingress.enabled }}
+Gateway API: {{ ternary "enabled" "disabled" .Values.gateway.enabled }}
+ServiceAccount: {{ include "takserver.serviceAccountName" . }} ({{ ternary "chart-created" "existing" .Values.serviceAccount.create }})
+Database migration: {{ ternary "pre-install/pre-upgrade hook" "release-managed Job with startup gate" .Values.database.migration.hook }}
+
+Optional dependencies:
+  Traefik: {{ ternary "enabled" "disabled" .Values.traefik.enabled }}
+  NATS: {{ ternary "enabled" "disabled" .Values.nats.enabled }}
+  Ignite: {{ ternary "enabled" "disabled" .Values.ignite.enabled }}
+
+Horizontal autoscaling:
+  API: {{ ternary "enabled" "disabled" .Values.workloads.api.autoscaling.enabled }}
+  Messaging: {{ ternary "enabled" "disabled" .Values.workloads.messaging.autoscaling.enabled }}
+
+Secret references:
+  Database credentials: {{ include "takserver.databaseSecretName" . }}
+{{- if or .Values.config.existing.certificates (gt (len .Values.config.certificates) 0) .Values.certificates.bootstrap.enabled }}
+  Certificates: {{ include "takserver.certificateSecretName" . }}
+{{- else }}
+  Certificates: not configured
+{{- end }}
+{{- if or .Values.config.existing.coreSecret (and (not .Values.config.existing.core) (or .Values.config.generated .Values.config.core)) }}
+  CoreConfig.xml: Secret {{ include "takserver.coreConfigName" . }}
+{{- else if .Values.config.existing.core }}
+  CoreConfig.xml: ConfigMap {{ include "takserver.coreConfigName" . }}
+{{- else }}
+  CoreConfig.xml: not configured
+{{- end }}
+
+{{- if and .Values.traefik.enabled .Values.traefikRoutes.enabled }}
+Traefik TCP routes expose the TAK TLS services through {{ default (printf "%s-traefik" .Release.Name) .Values.traefik.fullnameOverride }}.
+{{- else }}
+Use the chart Services or enable Ingress/Gateway API resources.
+{{- end }}
+
+The chart does not install Gateway API CRDs.
+{{- if and (not .Values.config.existing.certificates) (eq (len .Values.config.certificates) 0) (not .Values.certificates.bootstrap.enabled) }}
+Supply a certificate Secret before expecting the workloads to become Ready.
+{{- else if and .Values.certificates.bootstrap.enabled (not .Values.config.existing.certificates) (eq (len .Values.config.certificates) 0) }}
+Development certificate bootstrap is enabled. The bootstrap Job creates the
+certificate Secret when it does not already exist.
+{{- end }}

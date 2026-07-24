@@ -15,7 +15,7 @@ COPY takserver-usermanager/UserManager.jar \
 	takserver-core/messaging-readiness.sh \
 	takserver-core/config-readiness.sh \
 	takserver-core/api-readiness.sh \
-	takserver-schemamanager/db-connection-configuration.sh .
+	takserver-schemamanager/db-connection-configuration.sh ./
 RUN chmod +x takserver-config-cluster.sh && \
 	chmod +x takserver-api-cluster.sh && \
 	chmod +x takserver-messaging-cluster.sh && \

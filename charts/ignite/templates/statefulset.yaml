@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ignite.fullname" . }}
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  serviceName: {{ include "ignite.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+{{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "ignite.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.labels" . | nindent 8 }}
+{{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+{{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "ignite.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+{{- with .Values.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.runtimeClassName }}
+      runtimeClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.schedulerName }}
+      schedulerName: {{ . | quote }}
+{{- end }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      containers:
+        - name: ignite
+          image: {{ include "ignite.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: IGNITE_QUIET
+              value: "false"
+            - name: JVM_OPTS
+              value: {{ .Values.jvmOptions | quote }}
+          ports:
+            - name: communication
+              containerPort: 47100
+            - name: discovery
+              containerPort: 47500
+            - name: thin-client
+              containerPort: 10800
+            - name: rest
+              containerPort: 8080
+            - name: jmx
+              containerPort: 49112
+          startupProbe:
+            tcpSocket:
+              port: thin-client
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: thin-client
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: thin-client
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+{{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /opt/ignite/config/default-config.xml
+              subPath: default-config.xml
+            - name: data
+              mountPath: /persistence
+{{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "ignite.fullname" . }}-config
+{{- if not .Values.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+{{- end }}
+{{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+{{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+{{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+{{- end }}

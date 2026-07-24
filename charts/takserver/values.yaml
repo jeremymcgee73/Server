@@ -1,0 +1,381 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+commonLabels: {}
+commonAnnotations: {}
+podLabels: {}
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+runtimeClassName: ""
+schedulerName: ""
+revisionHistoryLimit: 10
+minReadySeconds: 0
+deploymentStrategy: {}
+
+# Applied to every TAK application Deployment. Role-specific entries below are
+# appended after these lists.
+extraVolumes: []
+extraVolumeMounts: []
+
+images:
+  api:
+    repository: takserver-api
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+  config:
+    repository: takserver-config
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+  messaging:
+    repository: takserver-messaging
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+  plugins:
+    repository: takserver-plugins
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+  databaseSetup:
+    repository: takserver-database-setup
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+  caSetup:
+    repository: takserver-ca-setup
+    tag: dev-amd64
+    digest: ""
+    pullPolicy: IfNotPresent
+
+workloads:
+  api:
+    replicaCount: 1
+    resources: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    podLabels: {}
+    podAnnotations: {}
+    pdb:
+      enabled: false
+      minAvailable: ""
+      maxUnavailable: 1
+      unhealthyPodEvictionPolicy: AlwaysAllow
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+        scaleUp:
+          stabilizationWindowSeconds: 60
+  config:
+    replicaCount: 1
+    resources: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    podLabels: {}
+    podAnnotations: {}
+  messaging:
+    replicaCount: 1
+    resources: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    podLabels: {}
+    podAnnotations: {}
+    pdb:
+      enabled: false
+      minAvailable: ""
+      maxUnavailable: 1
+      unhealthyPodEvictionPolicy: AlwaysAllow
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+        scaleUp:
+          stabilizationWindowSeconds: 60
+  plugins:
+    enabled: true
+    replicaCount: 1
+    resources: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    podLabels: {}
+    podAnnotations: {}
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: true
+rbac:
+  create: true
+
+config:
+  generated: false
+  existing:
+    # Existing ConfigMaps for non-sensitive configuration.
+    core: ""
+    ignite: ""
+    # Prefer a Secret for CoreConfig.xml because it contains database
+    # credentials. coreSecret takes precedence over core when set.
+    coreSecret: ""
+    coreSecretKey: CoreConfig.xml
+    certificates: ""
+  core: ""
+  ignite: ""
+  certificates: {}
+
+# Optional development/evaluation bootstrap. A dedicated Job generates one
+# shared TAK certificate Secret before workload init containers proceed.
+# Production installs should normally supply config.existing.certificates.
+certificates:
+  bootstrap:
+    enabled: false
+    secretName: ""
+    caName: TAKServer-Development-CA
+    state: Colorado
+    city: Denver
+    organization: TAK
+    organizationalUnit: Development
+    publisherImage:
+      repository: curlimages/curl
+      tag: 8.21.0
+      digest: ""
+      pullPolicy: IfNotPresent
+    backoffLimit: 3
+    ttlSecondsAfterFinished: 300
+    waitTimeoutSeconds: 300
+    resources: {}
+    publisherResources: {}
+
+database:
+  mode: external
+  external:
+    host: postgres.example.invalid
+    port: 5432
+  auth:
+    existingSecret: ""
+    secretKeys:
+      database: database
+      username: username
+      password: password
+    database: cot
+    username: postgres
+    password: ""
+  embedded:
+    image:
+      registry: docker.io
+      repository: imresamu/postgis
+      tag: 15-3.6.1-bookworm
+      digest: ""
+      pullPolicy: IfNotPresent
+    resources: {}
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    # The upstream PostGIS entrypoint performs chmod/chown before dropping
+    # privileges. Keep this separate from the hardened TAK container context.
+    securityContext: {}
+    extraVolumes: []
+    extraVolumeMounts: []
+    persistence:
+      enabled: false
+      size: 8Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      annotations: {}
+  migration:
+    enabled: true
+    # hook=false creates a release-managed, hash-named Job and makes database
+    # consumers wait for it. hook=true uses a pre-install/pre-upgrade hook and
+    # therefore requires database.auth.existingSecret and an external database.
+    hook: false
+    backoffLimit: 6
+    ttlSecondsAfterFinished: 86400
+    waitTimeoutSeconds: 900
+    waiterImage:
+      repository: curlimages/curl
+      tag: 8.21.0
+      digest: ""
+      pullPolicy: IfNotPresent
+    resources: {}
+    waiterResources: {}
+    extraVolumes: []
+    extraVolumeMounts: []
+
+service:
+  type: ClusterIP
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: takserver.local
+  path: /
+  pathType: Prefix
+  servicePort: http-8080
+  tls: []
+
+gateway:
+  enabled: false
+  create: false
+  name: ""
+  className: ""
+  listenerName: http
+  listenerPort: 80
+  hostnames: []
+  path: /
+  servicePort: 8080
+
+integrations:
+  nats:
+    host: nats
+    port: 4222
+  ignite:
+    host: ignite
+    discoveryPort: 47500
+
+traefikRoutes:
+  enabled: false
+
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress: []
+
+tests:
+  enabled: false
+  image:
+    repository: curlimages/curl
+    tag: 8.21.0
+    digest: ""
+    pullPolicy: IfNotPresent
+  certificateSecret: ""
+  certificateKey: admin.p12
+  certificatePassword: atakatak
+  resources: {}
+
+# -----------------------------------------------------------------------------
+# Optional dependency subchart values
+# -----------------------------------------------------------------------------
+# Helm passes each complete map below directly to the matching subchart. Any
+# value supported by the pinned Traefik, NATS, or Ignite chart can be added to
+# its map here or in an additional values file. The dependencies remain
+# disabled for controller-neutral production installs and can be enabled
+# independently.
+traefik:
+  enabled: false
+  fullnameOverride: ""
+  ingressClass:
+    isDefaultClass: false
+  gateway:
+    enabled: false
+  service:
+    spec:
+      type: LoadBalancer
+  ports:
+    web:
+      expose:
+        default: false
+    websecure:
+      expose:
+        default: true
+      exposedPort: 8443
+    takfed:
+      port: 8444
+      exposedPort: 8444
+      expose:
+        default: true
+      protocol: TCP
+    takcerts:
+      port: 8446
+      exposedPort: 8446
+      expose:
+        default: true
+      protocol: TCP
+    takcot:
+      port: 8089
+      exposedPort: 8089
+      expose:
+        default: true
+      protocol: TCP
+    fedv1:
+      port: 9000
+      exposedPort: 9000
+      expose:
+        default: true
+      protocol: TCP
+    fedv2:
+      port: 9001
+      exposedPort: 9001
+      expose:
+        default: true
+      protocol: TCP
+nats:
+  enabled: false
+  fullnameOverride: ""
+  config:
+    jetstream:
+      enabled: true
+      fileStore:
+        enabled: false
+      memoryStore:
+        enabled: true
+        maxSize: 256Mi
+  natsBox:
+    enabled: false
+  podDisruptionBudget:
+    enabled: false
+
+ignite:
+  enabled: false
+  fullnameOverride: ""
+  replicaCount: 2
+  image:
+    repository: takserver-ignite
+    tag: dev-amd64
+    pullPolicy: IfNotPresent

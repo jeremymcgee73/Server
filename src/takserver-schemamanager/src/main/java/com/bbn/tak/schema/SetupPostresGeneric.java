@@ -36,6 +36,10 @@ public class SetupPostresGeneric extends Command
                 sqlBuilder.append("create extension if not exists fuzzystrmatch;");
                 sqlBuilder.append("create extension if not exists postgis_tiger_geocoder;");
                 sqlBuilder.append("create extension if not exists postgis_topology;");
+                // Some PostGIS packages do not create tiger_data with the tiger
+                // geocoder extension. Support both layouts before assigning schema
+                // ownership.
+                sqlBuilder.append("create schema if not exists tiger_data;");
                 sqlBuilder.append("alter schema tiger owner to " + user + ";");
                 sqlBuilder.append("alter schema tiger_data owner to " + user + ";");
                 sqlBuilder.append("alter schema topology owner to " + user + ";");

@@ -1,0 +1,40 @@
+# Replace these repository paths with the approved Iron Bank image locations.
+images:
+  api:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-api
+  config:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-config
+  messaging:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-messaging
+  plugins:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-plugins
+  databaseSetup:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-database-setup
+  caSetup:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-ca-setup
+
+# Keep infrastructure and certificate issuance operator-managed unless their
+# approved registry1 images are supplied explicitly.
+database:
+  mode: external
+
+certificates:
+  bootstrap:
+    enabled: false
+
+traefik:
+  enabled: false
+
+nats:
+  enabled: false
+
+ignite:
+  enabled: false
+  image:
+    repository: registry1.dso.mil/ironbank/takserver/takserver-ignite
+
+tests:
+  enabled: false
+
+# Iron Bank credentials belong in imagePullSecrets supplied by the operator.
+imagePullSecrets: []

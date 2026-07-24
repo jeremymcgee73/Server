@@ -1,0 +1,22 @@
+{{- if eq .Values.database.mode "embedded" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "takserver.fullname" . }}-postgres
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "takserver.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+{{- end }}

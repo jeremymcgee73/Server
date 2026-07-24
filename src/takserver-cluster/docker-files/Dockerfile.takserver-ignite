@@ -15,6 +15,9 @@ RUN curl -LO https://archive.apache.org/dist/ignite/2.17.0/apache-ignite-2.17.0-
 
 RUN cp /opt/ignite/libs/optional/ignite-kubernetes/*.jar /opt/ignite/libs/
 
+# TAK clients and Ignite servers share serialized types from this extension.
+COPY takserver-core/ignite-extensions.jar /opt/ignite/libs/ignite-extensions.jar
+
 # Copy over a version of ignite.sh that uses exec to launch the process so the SIGTERM signal is caught
 COPY docker-files/scripts/takserver-ignite/ignite.sh /opt/ignite/bin/ignite.sh
 RUN chmod +x /opt/ignite/bin/ignite.sh

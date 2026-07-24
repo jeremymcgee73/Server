@@ -1,0 +1,127 @@
+images:
+  api:
+    repository: takserver-api
+    tag: dev-amd64
+  config:
+    repository: takserver-config
+    tag: dev-amd64
+  messaging:
+    repository: takserver-messaging
+    tag: dev-amd64
+  plugins:
+    repository: takserver-plugins
+    tag: dev-amd64
+  databaseSetup:
+    repository: takserver-database-setup
+    tag: dev-amd64
+
+workloads:
+  api:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: 512Mi
+      limits:
+        memory: 1536Mi
+    extraEnv:
+      - name: MAX_HEAP_PERCENT
+        value: "50"
+  config:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: 256Mi
+      limits:
+        memory: 768Mi
+    extraEnv:
+      - name: MAX_HEAP_PERCENT
+        value: "50"
+  messaging:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: 512Mi
+      limits:
+        memory: 1536Mi
+    extraEnv:
+      - name: MAX_HEAP_PERCENT
+        value: "50"
+  plugins:
+    enabled: true
+    replicaCount: 1
+    extraEnv:
+      - name: PLUGIN_MANAGER_MAX_HEAP
+        value: "384"
+    resources:
+      requests:
+        memory: 256Mi
+      limits:
+        memory: 768Mi
+
+config:
+  generated: true
+
+certificates:
+  bootstrap:
+    enabled: true
+
+tests:
+  enabled: true
+
+database:
+  mode: embedded
+  auth:
+    database: cot
+    username: postgres
+    password: postgres
+  embedded:
+    resources:
+      requests:
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    persistence:
+      enabled: false
+  migration:
+    enabled: true
+    hook: false
+
+# Parent-chart Traefik TCP routes. Subchart values begin below.
+traefikRoutes:
+  enabled: true
+
+# Optional dependency subchart values. Helm passes these maps directly to the
+# Traefik, NATS, and Ignite charts.
+traefik:
+  enabled: true
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  service:
+    spec:
+      type: NodePort
+nats:
+  enabled: true
+  container:
+    resources:
+      requests:
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+  reloader:
+    resources:
+      requests:
+        memory: 16Mi
+      limits:
+        memory: 64Mi
+
+ignite:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: 256Mi
+    limits:
+      memory: 768Mi
