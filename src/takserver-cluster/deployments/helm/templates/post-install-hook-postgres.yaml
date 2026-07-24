@@ -32,10 +32,6 @@ spec:
       - name: post-install-job
         image: "{{ .Values.takserver.takserverDatabaseSetup.image.repository }}:{{ .Values.takserver.takserverDatabaseSetup.image.tag }}"
         env:
-          - name: 'region'
-            value: 'aws-rds-placeholder'
-          - name: 'identifier'
-            value: 'aws-rds-placeholder'
           - name: POSTGRES_DB
             value: {{ .Values.global.postgresql.auth.database }}
           - name: POSTGRES_USER

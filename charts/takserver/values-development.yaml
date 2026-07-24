@@ -1,0 +1,46 @@
+imagePullPolicy: IfNotPresent
+
+images:
+  api:
+    repository: takserver-api
+    tag: dev-amd64
+  config:
+    repository: takserver-config
+    tag: dev-amd64
+  messaging:
+    repository: takserver-messaging
+    tag: dev-amd64
+  plugins:
+    repository: takserver-plugins
+    tag: dev-amd64
+  databaseSetup:
+    repository: takserver-database-setup
+    tag: dev-amd64
+
+workloads:
+  api:
+    replicas: 1
+  config:
+    replicas: 1
+  messaging:
+    replicas: 1
+  plugins:
+    enabled: true
+    replicas: 1
+
+database:
+  mode: embedded
+  auth:
+    database: cot
+    username: postgres
+    password: postgres
+  embedded:
+    persistence:
+      enabled: false
+  migration:
+    enabled: true
+
+exposure:
+  mode: service
+  service:
+    type: NodePort

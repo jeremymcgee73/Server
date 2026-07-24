@@ -89,7 +89,7 @@ spec:
     spec:
       serviceAccountName: takserver-ignite
       containers:
-        - name: takserver-api 
+        - name: takserver-api
           image: "{{ .Values.takserver.api.image.repository }}:{{ .Values.takserver.api.image.tag }}"
           imagePullPolicy: Always
           env:
@@ -158,7 +158,7 @@ spec:
     spec:
       serviceAccountName: takserver-ignite
       containers:
-        - name: takserver-config 
+        - name: takserver-config
           image: "{{ .Values.takserver.config.image.repository }}:{{ .Values.takserver.config.image.tag }}"
           imagePullPolicy: Always
           resources:

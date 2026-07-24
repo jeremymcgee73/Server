@@ -1,0 +1,8 @@
+TAK Server {{ .Chart.Version }} was installed as {{ include "takserver.fullname" . }}.
+
+Database mode: {{ .Values.database.mode }}
+Exposure mode: {{ .Values.exposure.mode }}
+
+The chart does not install an ingress controller, Gateway API CRDs, NATS, or Ignite.
+Use the operator-managed endpoints in values and supply the TAK configuration
+ConfigMaps/Secrets before expecting the workloads to become Ready.

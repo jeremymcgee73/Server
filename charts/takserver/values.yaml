@@ -1,0 +1,117 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+imagePullPolicy: IfNotPresent
+
+images:
+  api:
+    repository: takserver-api
+    tag: dev-amd64
+  config:
+    repository: takserver-config
+    tag: dev-amd64
+  messaging:
+    repository: takserver-messaging
+    tag: dev-amd64
+  plugins:
+    repository: takserver-plugins
+    tag: dev-amd64
+  databaseSetup:
+    repository: takserver-database-setup
+    tag: dev-amd64
+
+workloads:
+  api:
+    replicas: 1
+    resources: {}
+    extraEnv: {}
+  config:
+    replicas: 1
+    resources: {}
+    extraEnv: {}
+  messaging:
+    replicas: 1
+    resources: {}
+    extraEnv: {}
+  plugins:
+    enabled: true
+    replicas: 1
+    resources: {}
+    extraEnv: {}
+
+podSecurityContext: {}
+containerSecurityContext: {}
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: true
+  name: ""
+rbac:
+  create: true
+
+config:
+  existing:
+    core: ""
+    ignite: ""
+    certificates: ""
+  core: ""
+  ignite: ""
+  certificates: {}
+
+database:
+  mode: external
+  external:
+    host: postgres.example.invalid
+    port: 5432
+  auth:
+    existingSecret: ""
+    database: cot
+    username: postgres
+    password: ""
+  embedded:
+    image:
+      registry: docker.io
+      repository: imresamu/postgis
+      tag: 15-3.6.1-bookworm
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: false
+      size: 8Gi
+      storageClass: ""
+  migration:
+    enabled: true
+    hook: true
+    backoffLimit: 6
+    ttlSecondsAfterFinished: 86400
+
+exposure:
+  mode: disabled
+  service:
+    type: LoadBalancer
+    annotations: {}
+  ingress:
+    className: ""
+    annotations: {}
+    host: takserver.local
+    path: /
+    pathType: Prefix
+    servicePort: http-8080
+    tls: []
+  gateway:
+    create: false
+    name: ""
+    className: ""
+    listenerName: http
+    listenerPort: 80
+    hostnames: []
+    path: /
+    servicePort: 8080
+
+integrations:
+  nats:
+    host: nats
+    port: 4222
+  ignite:
+    host: ignite
+    discoveryPort: 47500

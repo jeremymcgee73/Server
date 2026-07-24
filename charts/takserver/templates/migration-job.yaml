@@ -1,0 +1,55 @@
+{{- if .Values.database.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "takserver.fullname" . }}-database-migration
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-migration
+{{- if .Values.database.migration.hook }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+{{- end }}
+spec:
+  backoffLimit: {{ .Values.database.migration.backoffLimit }}
+{{- if .Values.database.migration.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.database.migration.ttlSecondsAfterFinished }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "takserver.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database-migration
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: database-migration
+          image: "{{ .Values.images.databaseSetup.repository }}:{{ .Values.images.databaseSetup.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "takserver.databaseSecretName" . }}
+                  key: database
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "takserver.databaseSecretName" . }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "takserver.databaseSecretName" . }}
+                  key: password
+            - name: POSTGRES_HOST
+              value: {{ include "takserver.databaseHost" . | quote }}
+            - name: POSTGRES_PORT
+              value: {{ include "takserver.databasePort" . | quote }}
+{{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- end }}

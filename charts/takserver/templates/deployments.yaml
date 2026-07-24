@@ -1,0 +1,140 @@
+{{- $root := . -}}
+{{- $hasCore := or .Values.config.existing.core .Values.config.core -}}
+{{- $hasIgnite := or .Values.config.existing.ignite .Values.config.ignite -}}
+{{- $hasCertificates := or .Values.config.existing.certificates (gt (len .Values.config.certificates) 0) -}}
+{{- $roles := list
+  (dict "name" "api" "command" (list "sh" "takserver-api-cluster.sh") "readiness" "api-readiness.sh" "livenessPort" 8443 "postgres" true "ignite" true "core" false "ports" (list (dict "name" "https-8443" "containerPort" 8443) (dict "name" "fed-8444" "containerPort" 8444) (dict "name" "certs-8446" "containerPort" 8446) (dict "name" "http-8080" "containerPort" 8080)))
+  (dict "name" "config" "command" (list "sh" "takserver-config-cluster.sh") "readiness" "config-readiness.sh" "livenessPort" 10800 "postgres" false "ignite" true "core" true "ports" (list))
+  (dict "name" "messaging" "command" (list "sh" "takserver-messaging-cluster.sh") "readiness" "messaging-readiness.sh" "livenessPort" 10800 "postgres" true "ignite" true "core" true "ports" (list (dict "name" "tls-8089" "containerPort" 8089) (dict "name" "fedv1-9000" "containerPort" 9000) (dict "name" "fedv2-9001" "containerPort" 9001)))
+  (dict "name" "plugins" "command" (list "sh" "takserver-plugins-cluster.sh") "readiness" "" "livenessPort" 10800 "postgres" false "ignite" true "core" false "ports" (list))
+-}}
+{{- range $role := $roles }}
+{{- $workload := index $root.Values.workloads $role.name }}
+{{- $image := index $root.Values.images $role.name }}
+{{- $hasEnv := or $role.postgres (eq $role.name "messaging") (eq $role.name "plugins") (gt (len $workload.extraEnv) 0) }}
+{{- $hasMounts := or $hasCertificates (and $role.core $hasCore) (and $role.ignite $hasIgnite) }}
+{{- if or (ne $role.name "plugins") $workload.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "takserver.fullname" $root }}-{{ $role.name }}
+  labels:
+    {{- include "takserver.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $role.name }}
+spec:
+  replicas: {{ $workload.replicas }}
+  selector:
+    matchLabels:
+      {{- include "takserver.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $role.name }}
+  template:
+    metadata:
+      labels:
+        {{- include "takserver.selectorLabels" $root | nindent 8 }}
+        app.kubernetes.io/component: {{ $role.name }}
+    spec:
+      serviceAccountName: {{ include "takserver.serviceAccountName" $root }}
+      terminationGracePeriodSeconds: {{ $root.Values.terminationGracePeriodSeconds }}
+{{- with $root.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      containers:
+        - name: takserver-{{ $role.name }}
+          image: "{{ $image.repository }}:{{ $image.tag }}"
+          imagePullPolicy: {{ $root.Values.imagePullPolicy }}
+          command:
+            {{- toYaml $role.command | nindent 12 }}
+{{- if $hasEnv }}
+          env:
+{{- if $role.postgres }}
+            - name: POSTGRES_HOST
+              value: {{ include "takserver.databaseHost" $root | quote }}
+            - name: POSTGRES_PORT
+              value: {{ include "takserver.databasePort" $root | quote }}
+{{- end }}
+{{- if eq $role.name "messaging" }}
+            - name: spring_profiles_active
+              value: k8cluster
+{{- end }}
+{{- if eq $role.name "plugins" }}
+            - name: spring_profiles_active
+              value: k8cluster
+{{- end }}
+{{- with $workload.extraEnv }}
+{{ toYaml . | nindent 12 }}
+{{- end }}
+{{- end }}
+{{- with $root.Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          resources:
+            {{- toYaml $workload.resources | nindent 12 }}
+{{- if $role.ports }}
+          ports:
+{{- range $port := $role.ports }}
+            - name: {{ $port.name }}
+              containerPort: {{ $port.containerPort }}
+              protocol: TCP
+{{- end }}
+{{- end }}
+{{- if $role.readiness }}
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "{{ printf "test -x /%s && /%s" $role.readiness $role.readiness }}"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 12
+{{- end }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ $role.livenessPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 6
+{{- if $hasMounts }}
+          volumeMounts:
+{{- if $hasCertificates }}
+            - name: certificates
+              mountPath: /certs-configmap
+              readOnly: true
+{{- end }}
+{{- if and $role.core $hasCore }}
+            - name: core-config
+              mountPath: /CoreConfig.xml
+              subPath: CoreConfig.xml
+              readOnly: true
+{{- end }}
+{{- if and $role.ignite $hasIgnite }}
+            - name: ignite-config
+              mountPath: /TAKIgniteConfig.xml
+              subPath: TAKIgniteConfig.xml
+              readOnly: true
+{{- end }}
+{{- end }}
+{{- if $hasMounts }}
+      volumes:
+{{- if $hasCertificates }}
+        - name: certificates
+          secret:
+            secretName: {{ include "takserver.certificateSecretName" $root }}
+{{- end }}
+{{- if and $role.core $hasCore }}
+        - name: core-config
+          configMap:
+            name: {{ include "takserver.coreConfigName" $root }}
+{{- end }}
+{{- if and $role.ignite $hasIgnite }}
+        - name: ignite-config
+          configMap:
+            name: {{ include "takserver.igniteConfigName" $root }}
+{{- end }}
+{{- end }}
+{{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "imagePullPolicy": {"type": "string"},
+    "images": {"type": "object", "additionalProperties": {"type": "object"}},
+    "workloads": {"type": "object", "additionalProperties": {"type": "object"}},
+    "database": {
+      "type": "object",
+      "properties": {
+        "mode": {"type": "string", "enum": ["external", "embedded"]},
+        "external": {"type": "object"},
+        "auth": {"type": "object"},
+        "embedded": {"type": "object"},
+        "migration": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "exposure": {
+      "type": "object",
+      "properties": {
+        "mode": {"type": "string", "enum": ["disabled", "service", "ingress", "gateway"]}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

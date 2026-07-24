@@ -111,7 +111,9 @@ spec:
       name: ignite-persistence
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "{{ include "ignite.fullname" . }}-persistence-storage-class"
+{{ with .Values.persistence.persistenceVolume.storageClassName }}
+      storageClassName: {{ . | quote }}
+{{ end }}
       resources:
         requests:
           storage: {{ .Values.persistence.persistenceVolume.size }}
@@ -119,7 +121,9 @@ spec:
       name: ignite-wal
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "{{ include "ignite.fullname" . }}-wal-storage-class"
+{{ with .Values.persistence.walVolume.storageClassName }}
+      storageClassName: {{ . | quote }}
+{{ end }}
       resources:
         requests:
           storage: {{ .Values.persistence.walVolume.size }}

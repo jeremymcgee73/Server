@@ -5,30 +5,6 @@ coreConfigMapName: core-config
 takIgniteConfigMapName: tak-ignite-config
 
 takserver:
-  ingress:
-    # Note, ingress resources require an ingress controller in the Kubernetes cluster.
-    # Note, ingress resources will require ssl passthrough enabled on the ingress controller.
-    enabled: false
-    api:
-      cert:
-        annotations: {}
-        host: ""
-      federationTruststore:
-        annotations: {}
-        host: ""
-      https:
-        annotations: {}
-        host: ""
-    messaging:
-      streaming:
-        annotations: {}
-        host: ""
-      fedv1:
-        annotations: {}
-        host: ""
-      fedv2:
-        annotations: {}
-        host: ""
   config:
     image:
       repository: docker-devtest-local.artifacts.tak.gov/takserver-cluster/takserver-config
@@ -91,8 +67,8 @@ postgresql:
   enabled: false
   image:
     registry: docker.io
-    repository: postgis/postgis
-    tag: 15-3.4
+    repository: imresamu/postgis
+    tag: 15-3.6.1-bookworm
   primary:
     existingConfigmap: postgres-configuration
 
@@ -118,7 +94,7 @@ nats:
     jetstream:
       enabled: true
       fileStore:
-        pvc: 
+        pvc:
           enabled: false
     cluster:
       enabled: true
