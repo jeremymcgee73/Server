@@ -25,7 +25,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "takserver.selectorLabels" . | nindent 8 }}
+        {{- include "takserver.labels" . | nindent 8 }}
         app.kubernetes.io/component: database-migration
 {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
@@ -61,8 +61,8 @@ spec:
       containers:
         - name: database-migration
           image: {{ include "takserver.image" (dict "image" .Values.images.databaseSetup) | quote }}
-          imagePullPolicy: {{ include "takserver.imagePullPolicy" (dict "root" . "image" .Values.images.databaseSetup) }}
-{{- with .Values.containerSecurityContext }}
+          imagePullPolicy: {{ .Values.images.databaseSetup.pullPolicy }}
+{{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}

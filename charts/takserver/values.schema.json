@@ -20,12 +20,12 @@
     },
     "image": {
       "type": "object",
-      "required": ["repository", "tag"],
+      "required": ["repository", "tag", "pullPolicy"],
       "properties": {
         "repository": {"type": "string", "minLength": 1},
         "tag": {"type": "string", "minLength": 1},
         "digest": {"type": "string", "pattern": "^(sha256:[a-fA-F0-9]{64})?$"},
-        "pullPolicy": {"type": "string", "enum": ["", "Always", "IfNotPresent", "Never"]}
+        "pullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]}
       },
       "additionalProperties": false
     },
@@ -74,10 +74,10 @@
     },
     "workload": {
       "type": "object",
-      "required": ["replicas", "resources", "extraEnv", "extraVolumes", "extraVolumeMounts"],
+      "required": ["replicaCount", "resources", "extraEnv", "extraVolumes", "extraVolumeMounts"],
       "properties": {
         "enabled": {"type": "boolean"},
-        "replicas": {"type": "integer", "minimum": 0},
+        "replicaCount": {"type": "integer", "minimum": 0},
         "resources": {"$ref": "#/$defs/resources"},
         "extraEnv": {"$ref": "#/$defs/objectList"},
         "extraVolumes": {"$ref": "#/$defs/objectList"},
@@ -95,7 +95,6 @@
     "nameOverride": {"type": "string"},
     "fullnameOverride": {"type": "string"},
     "imagePullSecrets": {"$ref": "#/$defs/objectList"},
-    "imagePullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]},
     "commonLabels": {"$ref": "#/$defs/stringMap"},
     "commonAnnotations": {"$ref": "#/$defs/stringMap"},
     "podLabels": {"$ref": "#/$defs/stringMap"},
@@ -137,16 +136,16 @@
       "additionalProperties": false
     },
     "podSecurityContext": {"type": "object"},
-    "containerSecurityContext": {"type": "object"},
+    "securityContext": {"type": "object"},
     "terminationGracePeriodSeconds": {"type": "integer", "minimum": 1},
     "serviceAccount": {
       "type": "object",
-      "required": ["create", "name", "annotations", "automountServiceAccountToken"],
+      "required": ["create", "name", "annotations", "automount"],
       "properties": {
         "create": {"type": "boolean"},
         "name": {"type": "string"},
         "annotations": {"$ref": "#/$defs/stringMap"},
-        "automountServiceAccountToken": {"type": "boolean"}
+        "automount": {"type": "boolean"}
       },
       "additionalProperties": false
     },
@@ -243,12 +242,12 @@
         },
         "embedded": {
           "type": "object",
-          "required": ["image", "resources", "podSecurityContext", "containerSecurityContext", "extraVolumes", "extraVolumeMounts", "persistence"],
+          "required": ["image", "resources", "podSecurityContext", "securityContext", "extraVolumes", "extraVolumeMounts", "persistence"],
           "properties": {
             "image": {"$ref": "#/$defs/embeddedImage"},
             "resources": {"$ref": "#/$defs/resources"},
             "podSecurityContext": {"type": "object"},
-            "containerSecurityContext": {"type": "object"},
+            "securityContext": {"type": "object"},
             "extraVolumes": {"$ref": "#/$defs/objectList"},
             "extraVolumeMounts": {"$ref": "#/$defs/objectList"},
             "persistence": {
@@ -286,49 +285,43 @@
       },
       "additionalProperties": false
     },
-    "exposure": {
+    "service": {
       "type": "object",
-      "required": ["mode", "service", "ingress", "gateway"],
+      "required": ["type", "annotations"],
       "properties": {
-        "mode": {"type": "string", "enum": ["disabled", "service", "ingress", "gateway"]},
-        "service": {
-          "type": "object",
-          "required": ["type", "annotations"],
-          "properties": {
-            "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
-            "annotations": {"$ref": "#/$defs/stringMap"}
-          },
-          "additionalProperties": false
-        },
-        "ingress": {
-          "type": "object",
-          "required": ["className", "annotations", "host", "path", "pathType", "servicePort", "tls"],
-          "properties": {
-            "className": {"type": "string"},
-            "annotations": {"$ref": "#/$defs/stringMap"},
-            "host": {"type": "string", "minLength": 1},
-            "path": {"type": "string", "minLength": 1},
-            "pathType": {"type": "string", "enum": ["Exact", "Prefix", "ImplementationSpecific"]},
-            "servicePort": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "integer", "minimum": 1, "maximum": 65535}]},
-            "tls": {"$ref": "#/$defs/objectList"}
-          },
-          "additionalProperties": false
-        },
-        "gateway": {
-          "type": "object",
-          "required": ["create", "name", "className", "listenerName", "listenerPort", "hostnames", "path", "servicePort"],
-          "properties": {
-            "create": {"type": "boolean"},
-            "name": {"type": "string"},
-            "className": {"type": "string"},
-            "listenerName": {"type": "string", "minLength": 1},
-            "listenerPort": {"type": "integer", "minimum": 1, "maximum": 65535},
-            "hostnames": {"type": "array", "items": {"type": "string"}},
-            "path": {"type": "string", "minLength": 1},
-            "servicePort": {"type": "integer", "minimum": 1, "maximum": 65535}
-          },
-          "additionalProperties": false
-        }
+        "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+        "annotations": {"$ref": "#/$defs/stringMap"}
+      },
+      "additionalProperties": false
+    },
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "className", "annotations", "host", "path", "pathType", "servicePort", "tls"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "className": {"type": "string"},
+        "annotations": {"$ref": "#/$defs/stringMap"},
+        "host": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "pathType": {"type": "string", "enum": ["Exact", "Prefix", "ImplementationSpecific"]},
+        "servicePort": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "integer", "minimum": 1, "maximum": 65535}]},
+        "tls": {"$ref": "#/$defs/objectList"}
+      },
+      "additionalProperties": false
+    },
+    "gateway": {
+      "type": "object",
+      "required": ["enabled", "create", "name", "className", "listenerName", "listenerPort", "hostnames", "path", "servicePort"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "className": {"type": "string"},
+        "listenerName": {"type": "string", "minLength": 1},
+        "listenerPort": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "hostnames": {"type": "array", "items": {"type": "string"}},
+        "path": {"type": "string", "minLength": 1},
+        "servicePort": {"type": "integer", "minimum": 1, "maximum": 65535}
       },
       "additionalProperties": false
     },

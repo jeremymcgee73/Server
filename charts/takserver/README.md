@@ -12,7 +12,7 @@ the locally tagged `dev-amd64` TAK images. Override those tags with `dev-arm64`
 when building on Apple silicon.
 
 Build or refresh the vendored chart dependencies after changing dependency
-versions or the repository-owned Ignite subchart:
+versions or the repository-owned sibling chart at `charts/ignite`:
 
 ```text
 helm dependency update ./charts/takserver
@@ -74,6 +74,11 @@ between releases. The Traefik routes use TLS passthrough for TAK ports 8443,
 disable the distribution's built-in Traefik first to avoid competing ingress
 controllers and host ports.
 
+The parent uses Helm's conventional fullname behavior: when the release name
+already contains `takserver`, it is not repeated. For example, release
+`takserver` creates `takserver-api`, while release `production` creates
+`production-takserver-api`.
+
 ## ServiceAccount and RBAC
 
 By default, the chart creates a release-scoped ServiceAccount and the discovery
@@ -83,7 +88,7 @@ Role used by TAK's Kubernetes clustering. To use an operator-managed account:
 serviceAccount:
   create: false
   name: takserver-runtime
-  automountServiceAccountToken: true
+  automount: true
 rbac:
   create: true # bind the chart's Role to the existing account
 ```
@@ -208,15 +213,13 @@ is ready. `hook=true` instead runs a pre-install/pre-upgrade hook and is accepte
 only for an external database with `database.auth.existingSecret`, because hook
 resources run before chart-managed Secrets and databases exist.
 
-The chart supports four exposure modes:
-
-- `disabled`: create internal Services only;
-- `service`: change the API and messaging Services to the configured Service type;
-- `ingress`: create a standard `networking.k8s.io/v1` Ingress for the API's
-  plain HTTP service port (override `exposure.ingress.servicePort` when the
-  selected controller is configured for a different backend);
-- `gateway`: create/reference a Gateway API Gateway and HTTPRoute for the API's
-  plain HTTP service port.
+The chart follows the conventional top-level Service, Ingress, and Gateway
+values pattern. Internal `ClusterIP` Services are created by default. Set
+`service.type` to `NodePort` or `LoadBalancer` when direct L4 exposure is
+needed. Set `ingress.enabled=true` for a standard `networking.k8s.io/v1`
+Ingress, or `gateway.enabled=true` to create an HTTPRoute and optionally its
+Gateway. Override `ingress.servicePort` when the controller uses a different
+backend port.
 
 ## Additional volumes
 

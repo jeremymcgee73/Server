@@ -1,16 +1,12 @@
-{{- $root := . -}}
-{{- $hasCore := or .Values.config.generated .Values.config.existing.core .Values.config.existing.coreSecret .Values.config.core -}}
-{{- $coreUsesSecret := or .Values.config.existing.coreSecret (and (not .Values.config.existing.core) (or .Values.config.generated .Values.config.core)) -}}
-{{- $hasIgnite := or .Values.config.generated .Values.config.existing.ignite .Values.config.ignite -}}
-{{- $bootstrapCertificates := and .Values.certificates.bootstrap.enabled (not .Values.config.existing.certificates) (eq (len .Values.config.certificates) 0) -}}
-{{- $hasCertificates := or .Values.config.existing.certificates (gt (len .Values.config.certificates) 0) $bootstrapCertificates -}}
-{{- $roles := list
-  (dict "name" "api" "command" (list "sh" "takserver-api-cluster.sh") "healthPort" 8443 "postgres" true "ignite" true "core" false "ports" (list (dict "name" "https-8443" "containerPort" 8443) (dict "name" "fed-8444" "containerPort" 8444) (dict "name" "certs-8446" "containerPort" 8446) (dict "name" "http-8080" "containerPort" 8080)))
-  (dict "name" "config" "command" (list "sh" "takserver-config-cluster.sh") "healthPort" 10800 "postgres" false "ignite" true "core" true "ports" (list))
-  (dict "name" "messaging" "command" (list "sh" "takserver-messaging-cluster.sh") "healthPort" 10800 "postgres" true "ignite" true "core" true "ports" (list (dict "name" "tls-8089" "containerPort" 8089) (dict "name" "fedv1-9000" "containerPort" 9000) (dict "name" "fedv2-9001" "containerPort" 9001)))
-  (dict "name" "plugins" "command" (list "sh" "takserver-plugins-cluster.sh") "healthPort" 10800 "postgres" false "ignite" true "core" false "ports" (list))
--}}
-{{- range $role := $roles }}
+{{/* Render one TAK Server component Deployment. */}}
+{{- define "takserver.deployment" -}}
+{{- $root := .root -}}
+{{- $role := .role -}}
+{{- $hasCore := or $root.Values.config.generated $root.Values.config.existing.core $root.Values.config.existing.coreSecret $root.Values.config.core -}}
+{{- $coreUsesSecret := or $root.Values.config.existing.coreSecret (and (not $root.Values.config.existing.core) (or $root.Values.config.generated $root.Values.config.core)) -}}
+{{- $hasIgnite := or $root.Values.config.generated $root.Values.config.existing.ignite $root.Values.config.ignite -}}
+{{- $bootstrapCertificates := and $root.Values.certificates.bootstrap.enabled (not $root.Values.config.existing.certificates) (eq (len $root.Values.config.certificates) 0) -}}
+{{- $hasCertificates := or $root.Values.config.existing.certificates (gt (len $root.Values.config.certificates) 0) $bootstrapCertificates -}}
 {{- $workload := index $root.Values.workloads $role.name }}
 {{- $image := index $root.Values.images $role.name }}
 {{- $autoscaling := default dict $workload.autoscaling }}
@@ -41,7 +37,7 @@ spec:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- if not $autoscalingEnabled }}
-  replicas: {{ $workload.replicas }}
+  replicas: {{ $workload.replicaCount }}
 {{- end }}
   selector:
     matchLabels:
@@ -50,7 +46,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "takserver.selectorLabels" $root | nindent 8 }}
+        {{- include "takserver.labels" $root | nindent 8 }}
         app.kubernetes.io/component: {{ $role.name }}
 {{- with $root.Values.podLabels }}
         {{- toYaml . | nindent 8 }}
@@ -59,7 +55,7 @@ spec:
         {{- toYaml . | nindent 8 }}
 {{- end }}
       annotations:
-        checksum/config: {{ include (print $root.Template.BasePath "/config.yaml") $root | sha256sum }}
+        checksum/config: {{ include "takserver.configChecksum" $root }}
 {{- with $root.Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
 {{- end }}
@@ -68,7 +64,7 @@ spec:
 {{- end }}
     spec:
       serviceAccountName: {{ include "takserver.serviceAccountName" $root }}
-      automountServiceAccountToken: {{ $root.Values.serviceAccount.automountServiceAccountToken }}
+      automountServiceAccountToken: {{ $root.Values.serviceAccount.automount }}
       terminationGracePeriodSeconds: {{ $root.Values.terminationGracePeriodSeconds }}
 {{- with $root.Values.priorityClassName }}
       priorityClassName: {{ . | quote }}
@@ -121,7 +117,7 @@ spec:
               exit 1
           resources:
             {{- toYaml $root.Values.certificates.bootstrap.publisherResources | nindent 12 }}
-{{- with $root.Values.containerSecurityContext }}
+{{- with $root.Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}
@@ -159,7 +155,7 @@ spec:
               exit 1
           resources:
             {{- toYaml $root.Values.database.migration.waiterResources | nindent 12 }}
-{{- with $root.Values.containerSecurityContext }}
+{{- with $root.Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}
@@ -168,7 +164,7 @@ spec:
       containers:
         - name: takserver-{{ $role.name }}
           image: {{ include "takserver.image" (dict "image" $image) | quote }}
-          imagePullPolicy: {{ include "takserver.imagePullPolicy" (dict "root" $root "image" $image) }}
+          imagePullPolicy: {{ $image.pullPolicy }}
           command:
             {{- toYaml $role.command | nindent 12 }}
 {{- if $hasEnv }}
@@ -191,7 +187,7 @@ spec:
 {{ toYaml . | nindent 12 }}
 {{- end }}
 {{- end }}
-{{- with $root.Values.containerSecurityContext }}
+{{- with $root.Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}
@@ -286,6 +282,5 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
 {{- end }}
----
 {{- end }}
 {{- end }}

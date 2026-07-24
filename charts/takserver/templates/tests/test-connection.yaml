@@ -47,7 +47,7 @@ spec:
       env:
         - name: CERTIFICATE_PASSWORD
           value: {{ .Values.tests.certificatePassword | quote }}
-{{- with .Values.containerSecurityContext }}
+{{- with .Values.securityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
 {{- end }}

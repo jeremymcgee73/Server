@@ -1,0 +1,19 @@
+{{- if and (not .Values.config.existing.ignite) (or .Values.config.ignite .Values.config.generated) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "takserver.igniteConfigName" . }}
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+data:
+  TAKIgniteConfig.xml: |-
+{{- if .Values.config.ignite }}
+    {{- tpl .Values.config.ignite . | nindent 4 }}
+{{- else }}
+    {{- tpl (.Files.Get "files/TAKIgniteConfig.xml") . | nindent 4 }}
+{{- end }}
+{{- end }}

@@ -19,7 +19,7 @@ serviceAccount:
   create: true
   name: ""
   annotations: {}
-  automountServiceAccountToken: true
+  automount: true
 rbac:
   create: true
 
@@ -29,7 +29,7 @@ resources: {}
 podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
-containerSecurityContext:
+securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:

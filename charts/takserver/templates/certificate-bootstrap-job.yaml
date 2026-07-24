@@ -4,62 +4,19 @@
 {{- $fullname := include "takserver.fullname" . -}}
 {{- $secretName := include "takserver.certificateSecretName" . -}}
 {{- $serviceAccountName := include "takserver.certificateBootstrapServiceAccountName" . -}}
-{{- $jobHash := toJson $bootstrap | sha256sum | trunc 8 -}}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ $serviceAccountName }}
-  labels:
-    {{- include "takserver.labels" . | nindent 4 }}
-    app.kubernetes.io/component: certificate-bootstrap
-{{- with .Values.commonAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-{{- end }}
-automountServiceAccountToken: true
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ $serviceAccountName }}
-  labels:
-    {{- include "takserver.labels" . | nindent 4 }}
-    app.kubernetes.io/component: certificate-bootstrap
-{{- with .Values.commonAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-{{- end }}
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: [{{ $secretName | quote }}]
-    verbs: ["get"]
-  # Kubernetes cannot restrict create-by-name through resourceNames. This
-  # permission belongs only to the short-lived bootstrap Job service account.
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["create"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ $serviceAccountName }}
-  labels:
-    {{- include "takserver.labels" . | nindent 4 }}
-    app.kubernetes.io/component: certificate-bootstrap
-{{- with .Values.commonAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-{{- end }}
-subjects:
-  - kind: ServiceAccount
-    name: {{ $serviceAccountName }}
-    namespace: {{ .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ $serviceAccountName }}
----
+{{- $jobHashInput := dict
+  "bootstrap" $bootstrap
+  "caSetupImage" .Values.images.caSetup
+  "podSecurityContext" .Values.podSecurityContext
+  "securityContext" .Values.securityContext
+  "podLabels" .Values.podLabels
+  "podAnnotations" .Values.podAnnotations
+  "commonLabels" .Values.commonLabels
+  "imagePullSecrets" .Values.imagePullSecrets
+  "chartVersion" .Chart.Version
+  "appVersion" .Chart.AppVersion
+-}}
+{{- $jobHash := toJson $jobHashInput | sha256sum | trunc 8 -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -79,7 +36,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "takserver.selectorLabels" . | nindent 8 }}
+        {{- include "takserver.labels" . | nindent 8 }}
         app.kubernetes.io/component: certificate-bootstrap
 {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
@@ -99,7 +56,7 @@ spec:
       initContainers:
         - name: generate-certificates
           image: {{ include "takserver.image" (dict "image" .Values.images.caSetup) | quote }}
-          imagePullPolicy: {{ include "takserver.imagePullPolicy" (dict "root" . "image" .Values.images.caSetup) }}
+          imagePullPolicy: {{ .Values.images.caSetup.pullPolicy }}
           command: ["/bin/bash", "-ec"]
           args:
             - |
@@ -119,7 +76,7 @@ spec:
               value: {{ $bootstrap.organizationalUnit | quote }}
           resources:
             {{- toYaml $bootstrap.resources | nindent 12 }}
-{{- with .Values.containerSecurityContext }}
+{{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}
@@ -175,7 +132,7 @@ spec:
               value: {{ $secretName | quote }}
           resources:
             {{- toYaml $bootstrap.publisherResources | nindent 12 }}
-{{- with .Values.containerSecurityContext }}
+{{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}

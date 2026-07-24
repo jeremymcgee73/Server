@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "ignite.selectorLabels" . | nindent 8 }}
+        {{- include "ignite.labels" . | nindent 8 }}
 {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
 {{- end }}
@@ -33,7 +33,7 @@ spec:
 {{- end }}
     spec:
       serviceAccountName: {{ include "ignite.serviceAccountName" . }}
-      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
 {{- with .Values.priorityClassName }}
       priorityClassName: {{ . | quote }}
@@ -99,7 +99,7 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-{{- with .Values.containerSecurityContext }}
+{{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}

@@ -8,7 +8,12 @@
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- printf "%s-%s" .Release.Name (include "takserver.name" .) | trunc 63 | trimSuffix "-" }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -20,7 +25,9 @@
 helm.sh/chart: {{ include "takserver.chart" . }}
 app.kubernetes.io/name: {{ include "takserver.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/part-of: takserver
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- with .Values.commonLabels }}
@@ -66,7 +73,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "takserver.igniteConfigName" -}}
-{{- default (printf "%s-ignite-config" (include "takserver.fullname" .)) .Values.config.existing.ignite }}
+{{- default (printf "%s-ignite-client-config" (include "takserver.fullname" .)) .Values.config.existing.ignite }}
 {{- end }}
 
 {{- define "takserver.certificateSecretName" -}}
@@ -89,16 +96,26 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end }}
 
-{{- define "takserver.imagePullPolicy" -}}
-{{- default .root.Values.imagePullPolicy .image.pullPolicy -}}
-{{- end }}
-
 {{- define "takserver.databaseMigrationJobName" -}}
 {{- $base := printf "%s-database-migration" (include "takserver.fullname" .) -}}
 {{- if .Values.database.migration.hook -}}
 {{- $base | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- $hashInput := dict "image" .Values.images.databaseSetup "databaseMode" .Values.database.mode "external" .Values.database.external "auth" .Values.database.auth "migration" .Values.database.migration -}}
+{{- $hashInput := dict
+  "image" .Values.images.databaseSetup
+  "databaseMode" .Values.database.mode
+  "external" .Values.database.external
+  "auth" .Values.database.auth
+  "migration" .Values.database.migration
+  "podSecurityContext" .Values.podSecurityContext
+  "securityContext" .Values.securityContext
+  "podLabels" .Values.podLabels
+  "podAnnotations" .Values.podAnnotations
+  "commonLabels" .Values.commonLabels
+  "imagePullSecrets" .Values.imagePullSecrets
+  "chartVersion" .Chart.Version
+  "appVersion" .Chart.AppVersion
+-}}
 {{- $hash := toJson $hashInput | sha256sum | trunc 8 -}}
 {{- printf "%s-%s" ($base | trunc 54 | trimSuffix "-") $hash -}}
 {{- end -}}
@@ -111,4 +128,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- else -}}
 {{- printf "%s:%s" $repository .tag -}}
 {{- end -}}
+{{- end }}
+
+{{/* Roll workloads when chart-managed configuration inputs change. */}}
+{{- define "takserver.configChecksum" -}}
+{{- toJson (dict "config" .Values.config "certificates" .Values.certificates "databaseAuth" .Values.database.auth) | sha256sum -}}
 {{- end }}

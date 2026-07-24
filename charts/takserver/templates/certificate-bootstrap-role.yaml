@@ -1,0 +1,24 @@
+{{- $enabled := and .Values.certificates.bootstrap.enabled (not .Values.config.existing.certificates) (eq (len .Values.config.certificates) 0) -}}
+{{- if $enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "takserver.certificateBootstrapServiceAccountName" . }}
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: certificate-bootstrap
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ include "takserver.certificateSecretName" . | quote }}]
+    verbs: ["get"]
+  # Kubernetes cannot restrict create-by-name through resourceNames. This
+  # permission belongs only to the short-lived bootstrap Job service account.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+{{- end }}

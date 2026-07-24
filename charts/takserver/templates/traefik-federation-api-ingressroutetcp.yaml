@@ -1,0 +1,4 @@
+{{- $fullname := include "takserver.fullname" . -}}
+{{- include "takserver.traefikIngressRouteTCP" (dict "root" . "route" (dict
+  "name" "federation-api" "entryPoint" "takfed" "service" (printf "%s-api" $fullname) "port" 8444
+)) }}

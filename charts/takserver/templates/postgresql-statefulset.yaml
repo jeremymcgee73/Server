@@ -1,25 +1,4 @@
 {{- if eq .Values.database.mode "embedded" }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "takserver.fullname" . }}-postgres
-  labels:
-    {{- include "takserver.labels" . | nindent 4 }}
-    app.kubernetes.io/component: database
-{{- with .Values.commonAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-{{- end }}
-spec:
-  type: ClusterIP
-  selector:
-    {{- include "takserver.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: database
-  ports:
-    - name: postgres
-      port: 5432
-      targetPort: postgres
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -41,13 +20,13 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "takserver.selectorLabels" . | nindent 8 }}
+        {{- include "takserver.labels" . | nindent 8 }}
         app.kubernetes.io/component: database
 {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
 {{- end }}
       annotations:
-        checksum/config: {{ include (print .Template.BasePath "/config.yaml") . | sha256sum }}
+        checksum/config: {{ include "takserver.configChecksum" . }}
 {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
 {{- end }}
@@ -117,7 +96,7 @@ spec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             periodSeconds: 30
             failureThreshold: 6
-{{- with .Values.database.embedded.containerSecurityContext }}
+{{- with .Values.database.embedded.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
 {{- end }}

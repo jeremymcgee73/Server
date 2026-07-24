@@ -1,5 +1,7 @@
-{{- $root := . -}}
-{{- range $roleName := list "api" "messaging" }}
+{{/* Render one TAK Server component PodDisruptionBudget. */}}
+{{- define "takserver.pdb" -}}
+{{- $root := .root -}}
+{{- $roleName := .component -}}
 {{- $workload := index $root.Values.workloads $roleName -}}
 {{- if $workload.pdb.enabled }}
 apiVersion: policy/v1
@@ -24,6 +26,5 @@ spec:
     matchLabels:
       {{- include "takserver.selectorLabels" $root | nindent 6 }}
       app.kubernetes.io/component: {{ $roleName }}
----
 {{- end }}
 {{- end }}

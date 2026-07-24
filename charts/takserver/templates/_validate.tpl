@@ -1,14 +1,22 @@
+{{/* Validate combinations that JSON Schema cannot express. */}}
+{{- define "takserver.validateValues" -}}
 {{- if and .Values.database.migration.enabled .Values.database.migration.hook (or (ne .Values.database.mode "external") (not .Values.database.auth.existingSecret)) -}}
 {{- fail "database.migration.hook=true requires database.mode=external and database.auth.existingSecret because pre-install hooks run before chart-managed database resources" -}}
+{{- end -}}
+{{- if and .Values.config.existing.core .Values.config.existing.coreSecret -}}
+{{- fail "config.existing.core and config.existing.coreSecret are mutually exclusive" -}}
+{{- end -}}
+{{- if and .Values.database.auth.existingSecret .Values.config.generated (not .Values.config.core) (not .Values.config.existing.core) (not .Values.config.existing.coreSecret) -}}
+{{- fail "config.generated cannot read database credentials from database.auth.existingSecret; provide config.existing.coreSecret (recommended) or config.core" -}}
 {{- end -}}
 {{- if and .Values.traefikRoutes.enabled (not .Values.traefik.enabled) -}}
 {{- fail "traefikRoutes.enabled=true requires traefik.enabled=true" -}}
 {{- end -}}
-{{- if and .Values.database.migration.enabled (not .Values.database.migration.hook) (not .Values.serviceAccount.automountServiceAccountToken) -}}
-{{- fail "serviceAccount.automountServiceAccountToken must be true when workloads wait for a release-managed migration Job" -}}
+{{- if and .Values.database.migration.enabled (not .Values.database.migration.hook) (not .Values.serviceAccount.automount) -}}
+{{- fail "serviceAccount.automount must be true when workloads wait for a release-managed migration Job" -}}
 {{- end -}}
-{{- if and (eq .Values.exposure.mode "gateway") (not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1")) -}}
-{{- fail "exposure.mode=gateway requires Gateway API v1 CRDs to be installed before this chart" -}}
+{{- if and .Values.gateway.enabled (not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1")) -}}
+{{- fail "gateway.enabled=true requires Gateway API v1 CRDs to be installed before this chart" -}}
 {{- end -}}
 
 {{- range $key := list "helm.sh/chart" "app.kubernetes.io/name" "app.kubernetes.io/instance" "app.kubernetes.io/version" "app.kubernetes.io/part-of" "app.kubernetes.io/managed-by" -}}
@@ -47,6 +55,7 @@
 {{- range $key := list "app.kubernetes.io/name" "app.kubernetes.io/instance" "app.kubernetes.io/component" -}}
 {{- if hasKey $workload.podLabels $key -}}
 {{- fail (printf "workloads.%s.podLabels must not override selector label %s" $roleName $key) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

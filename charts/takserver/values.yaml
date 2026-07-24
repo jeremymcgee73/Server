@@ -2,7 +2,6 @@ nameOverride: ""
 fullnameOverride: ""
 
 imagePullSecrets: []
-imagePullPolicy: IfNotPresent
 commonLabels: {}
 commonAnnotations: {}
 podLabels: {}
@@ -28,36 +27,36 @@ images:
     repository: takserver-api
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
   config:
     repository: takserver-config
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
   messaging:
     repository: takserver-messaging
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
   plugins:
     repository: takserver-plugins
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
   databaseSetup:
     repository: takserver-database-setup
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
   caSetup:
     repository: takserver-ca-setup
     tag: dev-amd64
     digest: ""
-    pullPolicy: ""
+    pullPolicy: IfNotPresent
 
 workloads:
   api:
-    replicas: 1
+    replicaCount: 1
     resources: {}
     extraEnv: []
     extraVolumes: []
@@ -86,7 +85,7 @@ workloads:
         scaleUp:
           stabilizationWindowSeconds: 60
   config:
-    replicas: 1
+    replicaCount: 1
     resources: {}
     extraEnv: []
     extraVolumes: []
@@ -94,7 +93,7 @@ workloads:
     podLabels: {}
     podAnnotations: {}
   messaging:
-    replicas: 1
+    replicaCount: 1
     resources: {}
     extraEnv: []
     extraVolumes: []
@@ -124,7 +123,7 @@ workloads:
           stabilizationWindowSeconds: 60
   plugins:
     enabled: true
-    replicas: 1
+    replicaCount: 1
     resources: {}
     extraEnv: []
     extraVolumes: []
@@ -135,7 +134,7 @@ workloads:
 podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
-containerSecurityContext:
+securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
@@ -146,7 +145,7 @@ serviceAccount:
   create: true
   name: ""
   annotations: {}
-  automountServiceAccountToken: true
+  automount: true
 rbac:
   create: true
 
@@ -215,7 +214,7 @@ database:
         type: RuntimeDefault
     # The upstream PostGIS entrypoint performs chmod/chown before dropping
     # privileges. Keep this separate from the hardened TAK container context.
-    containerSecurityContext: {}
+    securityContext: {}
     extraVolumes: []
     extraVolumeMounts: []
     persistence:
@@ -244,28 +243,30 @@ database:
     extraVolumes: []
     extraVolumeMounts: []
 
-exposure:
-  mode: disabled
-  service:
-    type: LoadBalancer
-    annotations: {}
-  ingress:
-    className: ""
-    annotations: {}
-    host: takserver.local
-    path: /
-    pathType: Prefix
-    servicePort: http-8080
-    tls: []
-  gateway:
-    create: false
-    name: ""
-    className: ""
-    listenerName: http
-    listenerPort: 80
-    hostnames: []
-    path: /
-    servicePort: 8080
+service:
+  type: ClusterIP
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: takserver.local
+  path: /
+  pathType: Prefix
+  servicePort: http-8080
+  tls: []
+
+gateway:
+  enabled: false
+  create: false
+  name: ""
+  className: ""
+  listenerName: http
+  listenerPort: 80
+  hostnames: []
+  path: /
+  servicePort: 8080
 
 integrations:
   nats:

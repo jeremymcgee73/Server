@@ -1,5 +1,3 @@
-imagePullPolicy: IfNotPresent
-
 images:
   api:
     repository: takserver-api
@@ -19,7 +17,7 @@ images:
 
 workloads:
   api:
-    replicas: 1
+    replicaCount: 1
     resources:
       requests:
         memory: 512Mi
@@ -29,7 +27,7 @@ workloads:
       - name: MAX_HEAP_PERCENT
         value: "50"
   config:
-    replicas: 1
+    replicaCount: 1
     resources:
       requests:
         memory: 256Mi
@@ -39,7 +37,7 @@ workloads:
       - name: MAX_HEAP_PERCENT
         value: "50"
   messaging:
-    replicas: 1
+    replicaCount: 1
     resources:
       requests:
         memory: 512Mi
@@ -50,7 +48,7 @@ workloads:
         value: "50"
   plugins:
     enabled: true
-    replicas: 1
+    replicaCount: 1
     extraEnv:
       - name: PLUGIN_MANAGER_MAX_HEAP
         value: "384"
@@ -87,9 +85,6 @@ database:
   migration:
     enabled: true
     hook: false
-
-exposure:
-  mode: disabled
 
 # Parent-chart Traefik TCP routes. Subchart values begin below.
 traefikRoutes:

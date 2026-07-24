@@ -1,5 +1,7 @@
-{{- $root := . -}}
-{{- range $roleName := list "api" "messaging" }}
+{{/* Render one TAK Server component HorizontalPodAutoscaler. */}}
+{{- define "takserver.hpa" -}}
+{{- $root := .root -}}
+{{- $roleName := .component -}}
 {{- $workload := index $root.Values.workloads $roleName }}
 {{- if $workload.autoscaling.enabled }}
 apiVersion: autoscaling/v2
@@ -28,6 +30,5 @@ spec:
   behavior:
     {{- toYaml . | nindent 4 }}
 {{- end }}
----
 {{- end }}
 {{- end }}

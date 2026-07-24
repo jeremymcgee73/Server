@@ -2,7 +2,7 @@ apiVersion: v2
 name: takserver
 description: Controller-neutral TAK Server workloads and exposure resources.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "5.7"
 kubeVersion: ">=1.27.0-0"
 home: https://github.com/jeremymcgee73/Server
@@ -29,5 +29,5 @@ dependencies:
     condition: nats.enabled
   - name: ignite
     version: ~0.1.0
-    repository: file://subcharts/ignite
+    repository: file://../ignite
     condition: ignite.enabled
