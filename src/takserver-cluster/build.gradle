@@ -89,13 +89,6 @@ task copyClusterScripts(type: Copy) {
     into "$buildDir/scripts"
 }
 
-task copyDbConfigurations(type: Copy) {
-    from project(':takserver-schemamanager').file('scripts/postgresql.conf')
-    into project.getProjectDir().getPath() + '/deployments/helm/extras'
-    from project(':takserver-schemamanager').file('scripts/pg_hba.conf')
-    into project.getProjectDir().getPath() + '/deployments/helm/extras'
-}
-
 task copyDeployments(type: Copy) {
     from project(':takserver-cluster').file('deployments')
     into "$buildDir/deployments"
@@ -141,75 +134,16 @@ task deleteZip(type: Delete) {
     delete project(':takserver-cluster').file('takserver-cluster-' + version + '.zip')
 }
 
-task zipClusterHelm(type: Zip) {
-    dependsOn jar
-    dependsOn buildRpm
-    dependsOn buildDeb
-    dependsOn pullPluginManager
-    dependsOn pullTakserverCore
-    dependsOn pullSchemaManager
-    dependsOn pullUserManager
-//    dependsOn pullTakcl
-    dependsOn igniteExtensions
-    dependsOn deleteCoreConfig
-    dependsOn copyClusterScripts
-    dependsOn copyDbConfigurations
-    dependsOn copyDeployments
-    dependsOn copyDockerFiles
-    dependsOn copyScripts
-
-    from('build') {
-        into('cluster/')
-    }
-    from('.') {
-        include 'README.md'
-    }
-    
-    archiveFileName.set("takserver-cluster-helm${version}.zip")
-    destinationDirectory.set(layout.projectDirectory)
-}
-
-task moveZipHelm(type: Copy) {
-    dependsOn zipClusterHelm
-    from project(':takserver-cluster').file('takserver-cluster-helm-' + version + '.zip')
-    into "$buildDir/distributions/"
-}
-
-task deleteZipHelm(type: Delete) {
-    dependsOn moveZipHelm
-    delete project(':takserver-cluster').file('takserver-cluster-helm-' + version + '.zip')
-}
-
-task generateCertsConfigMap(type: Exec) {
-    workingDir "$buildDir/takserver-core/certs"
-    commandLine 'sh', 'generateClusterCertsConfigMap.sh'
-}
-
-task copyCertsConfigMap(type: Copy) {
-    dependsOn generateCertsConfigMap
-    from "$buildDir/takserver-core/certs/cert-migration.yaml"
-    into project(':takserver-cluster').file('deployments/helm/templates')
-}
-
 clean {
   doFirst {
       delete '$buildDir'
   }
 }
 
-// Keeps kubernetes dependencies out of the package process by not creating default cert configs used for helm
 task buildCluster {
   dependsOn zipCluster
   dependsOn moveZip
   dependsOn deleteZip
-}
-
-task buildHelmCluster {
-  dependsOn zipClusterHelm
-  dependsOn moveZipHelm
-  dependsOn deleteZipHelm
-  dependsOn generateCertsConfigMap
-  dependsOn copyCertsConfigMap
 }
 
 // TODO: Fix this gradle-detected dependency that probably shouldn't be

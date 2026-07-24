@@ -25,20 +25,20 @@ workloads:
   api:
     replicas: 1
     resources: {}
-    extraEnv: {}
+    extraEnv: []
   config:
     replicas: 1
     resources: {}
-    extraEnv: {}
+    extraEnv: []
   messaging:
     replicas: 1
     resources: {}
-    extraEnv: {}
+    extraEnv: []
   plugins:
     enabled: true
     replicas: 1
     resources: {}
-    extraEnv: {}
+    extraEnv: []
 
 podSecurityContext: {}
 containerSecurityContext: {}

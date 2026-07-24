@@ -1,9 +1,8 @@
 # TAK Server Helm chart
 
-This is the replacement chart for the legacy deployment under
-`src/takserver-cluster/deployments/helm`. It creates only standard Kubernetes
-resources and does not install Traefik, another ingress controller, Gateway API
-CRDs, NATS, or Ignite.
+This is the controller-neutral TAK Server chart. It replaces the removed legacy
+chart and creates only standard Kubernetes resources. It does not install
+Traefik, another ingress controller, Gateway API CRDs, NATS, or Ignite.
 
 External PostgreSQL/PostGIS is the default. Set `database.mode=embedded` only
 for development or evaluation. The development values file uses the requested

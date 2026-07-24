@@ -47,9 +47,9 @@ paths are working.
 
 ## Migration stance
 
-The existing chart under src/takserver-cluster/deployments/helm is legacy
-input, not the design foundation. The replacement chart starts from standard
-Kubernetes APIs and carries forward only verified TAK runtime requirements.
+The legacy chart formerly under `src/takserver-cluster/deployments/helm` has
+been removed. The replacement chart starts from standard Kubernetes APIs and
+carries forward only verified TAK runtime requirements.
 Old provider-specific deployment instructions, generated value tables, and
 controller-specific routing examples will not be copied.
 
@@ -219,9 +219,8 @@ Chainguard is phase two:
 
 ## Target Helm chart
 
-Create a new chart at charts/takserver. Keep the legacy chart in place during
-the transition so behavior can be compared. Remove it only after migration
-documentation and acceptance tests exist.
+Maintain the controller-neutral chart at `charts/takserver`. The legacy chart
+has been removed after the replacement passed its local k3d smoke test.
 
 Suggested layout:
 

@@ -160,20 +160,11 @@ docker push docker-devtest-local.artifacts.tak.gov/takserver-cluster/takserver-d
 ```
 
 
-## Steps to manually deploy with helm to a preconfigured cluster:
+## Helm deployment
 
-1.(Optional) Create a config map containing certs and deploy it to Kubernetes
-- kubectl create configmap cert-migration-replacement --from-file="path to pre-generated cluster certs" --dry-run=client -o yaml >cert-migration-replacement.yaml
-- kubectl create -f cert-migration-replacement.yaml -n takserver
-
-2.Deploy TAK and dependencies.
-- kubectl create secret -n takserver docker-registry reg-cred --docker-server=docker-devtest-local.artifacts.tak.gov --docker-username=${ARTIFACTORY_USERNAME} --docker-password=${ARTIFACTORY_PASSWORD}
-- Set your working directory to `src/takserver-cluster/deployments/helm`
-- helm dep update
-- helm upgrade --install takserver -n=takserver --create-namespace ./ -f ./production-values.yaml
-
-3. Uninstall deployment when work is complete.
-- helm uninstall takserver -n takserver
+The legacy cluster chart has been removed. Use the controller-neutral chart at
+`charts/takserver`; installation and configuration are documented in that
+chart's README and in `CONTAINERS.md`.
 
 
 ## kOps is an alternate install mechanism that uses AWS resources directly, including EC2, rather that EKS. See https://kops.sigs.k8s.io for more information about kOps.

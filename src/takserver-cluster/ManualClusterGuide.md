@@ -84,17 +84,9 @@
 - Edit ____docker-files/Dockerfile.takserver-core____ and replace <AWS_ECR_URI>
 - Build TAK server container images
 `cd $CLUSTER_HOME_DIR && docker build -t $AWS_ECR_URI:core-base -f docker-files/Dockerfile.takserver-base . && docker build -f docker-files/Dockerfile.takserver-core -t $AWS_ECR_URI:core-provisioned . && docker push $AWS_ECR_URI`
-- Deploy API, Messaging, Ignite, NATS, and NATS Streaming services. Replace {REPLICA_COUNT} below with the number of replicas you'd like for each service. <br>
-`cd $CLUSTER_HOME_DIR/deployments/helm/ helm upgrade --install -n takserver takserver src/takserver-cluster/deployments/helm -f src/takserver-cluster/deployments/helm/developer-values.yaml <br>
-  --set takserver.plugins.enabled={REPLICA_COUNT} <br>
-  --set takserver.messaging.replicas={REPLICA_COUNT} <br>
-  --set takserver.api.replicas={REPLICA_COUNT} <br>
-  --set takserver.messaging.image.repository=AWS_ECR_URI <br>
-  --set takserver.api.image.repository=AWS_ECR_URI <br>
-  --set takserver.plugins.image.repository=AWS_ECR_URI <br>
-  --set ignite.replicaCount={REPLICA_COUNT} <br>
-  --set nats.cluster.replicas={REPLICA_COUNT} <br>
-  --set stan.cluster.replicas={REPLICA_COUNT})) <br>`
+- Deploy TAK Server with the controller-neutral chart under `charts/takserver`.
+  See `charts/takserver/README.md` and `src/takserver-cluster/CONTAINERS.md`
+  for the supported values and dependency setup.
 
 
 - __Optional__ : Create DNS entry for network load balancer. Go to AWS->EC2->Load Balancers->Your Load Balancer and copy the DNS name. Then go to AWS->Route53->Your Hosted Zone->Record Sets. Create record set: name = name of cluster, type = cname, value = load balancer DNS name.

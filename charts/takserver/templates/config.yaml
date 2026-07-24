@@ -29,7 +29,7 @@ metadata:
   name: {{ include "takserver.databaseSecretName" . }}
   labels:
 {{ include "takserver.labels" . | nindent 4 }}
-  type: Opaque
+type: Opaque
 stringData:
   database: {{ .Values.database.auth.database | quote }}
   username: {{ .Values.database.auth.username | quote }}
@@ -43,7 +43,7 @@ metadata:
   name: {{ include "takserver.certificateSecretName" . }}
   labels:
 {{ include "takserver.labels" . | nindent 4 }}
-  type: Opaque
+type: Opaque
 stringData:
 {{- toYaml .Values.config.certificates | nindent 2 }}
 {{- end }}

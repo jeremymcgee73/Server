@@ -27,6 +27,9 @@ workloads:
   plugins:
     enabled: true
     replicas: 1
+    extraEnv:
+      - name: PLUGIN_MANAGER_MAX_HEAP
+        value: "512"
 
 database:
   mode: embedded
@@ -39,6 +42,7 @@ database:
       enabled: false
   migration:
     enabled: true
+    hook: false
 
 exposure:
   mode: service
