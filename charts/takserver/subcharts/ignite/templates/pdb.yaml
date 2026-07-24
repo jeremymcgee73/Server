@@ -1,0 +1,28 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- if and (ne (toString .Values.podDisruptionBudget.maxUnavailable) "") (ne (toString .Values.podDisruptionBudget.minAvailable) "") }}
+{{- fail "ignite.podDisruptionBudget must set only one of minAvailable or maxUnavailable" }}
+{{- end }}
+{{- if and (eq (toString .Values.podDisruptionBudget.maxUnavailable) "") (eq (toString .Values.podDisruptionBudget.minAvailable) "") }}
+{{- fail "ignite.podDisruptionBudget must set minAvailable or maxUnavailable" }}
+{{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ignite.fullname" . }}
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+{{- if ne (toString .Values.podDisruptionBudget.maxUnavailable) "" }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+{{- else }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+{{- end }}
+  unhealthyPodEvictionPolicy: {{ .Values.podDisruptionBudget.unhealthyPodEvictionPolicy }}
+  selector:
+    matchLabels:
+      {{- include "ignite.selectorLabels" . | nindent 6 }}
+{{- end }}

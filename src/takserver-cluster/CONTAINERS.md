@@ -83,11 +83,13 @@ Do not copy credentials into Dockerfiles or image layers.
 
 ## k3d development
 
-Create a disposable k3d cluster, import the images for the cluster's
-architecture, and install the chart with development values:
+Create a disposable k3d cluster with k3s's built-in Traefik disabled, import the
+images for the cluster's architecture, and install the chart with development
+values. The development values enable the chart's optional Traefik, NATS, and
+Ignite dependencies:
 
 ```text
-k3d cluster create takserver-dev
+k3d cluster create takserver-dev --k3s-arg '--disable=traefik@server:0'
 k3d image import --cluster takserver-dev \
   takserver-api:dev-${ARCH} \
   takserver-config:dev-${ARCH} \
@@ -98,9 +100,22 @@ k3d image import --cluster takserver-dev \
   takserver-ca-setup:dev-${ARCH}
 helm upgrade --install takserver <chart-path> \
   --namespace takserver --create-namespace \
-  -f <chart-path>/values-development.yaml
+  -f <chart-path>/values-development.yaml \
+  --set images.api.tag=dev-${ARCH} \
+  --set images.config.tag=dev-${ARCH} \
+  --set images.messaging.tag=dev-${ARCH} \
+  --set images.plugins.tag=dev-${ARCH} \
+  --set images.databaseSetup.tag=dev-${ARCH} \
+  --set images.caSetup.tag=dev-${ARCH} \
+  --set ignite.image.tag=dev-${ARCH}
 ```
 
+The development values enable the certificate bootstrap Job. It creates the
+shared server certificate Secret and an administrator PKCS#12 bundle when that
+Secret does not already exist. Production installs should disable the bootstrap
+and reference a pre-provisioned Secret instead.
+
 Use `k3d cluster delete takserver-dev` to reset the environment. Keep
-controller installation and configuration outside the chart; the chart should
-only create the selected Service, Ingress, or Gateway API resources.
+`traefik.enabled`, `nats.enabled`, and `ignite.enabled` set to `false` for the
+controller-neutral default, or enable only the dependencies the target cluster
+should own. The chart does not install Gateway API CRDs.

@@ -1,0 +1,71 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "takserver.fullname" . }}-test-connection
+  labels:
+    {{- include "takserver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+{{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+{{- with .Values.podSecurityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  containers:
+    - name: test-connection
+      image: {{ include "takserver.image" (dict "image" .Values.tests.image) | quote }}
+      imagePullPolicy: {{ .Values.tests.image.pullPolicy }}
+      command: ["/bin/sh", "-ec"]
+      args:
+        - |
+          cat >/tmp/openssl.cnf <<'EOF'
+          openssl_conf = openssl_init
+          [openssl_init]
+          providers = provider_sect
+          [provider_sect]
+          default = default_sect
+          legacy = legacy_sect
+          [default_sect]
+          activate = 1
+          [legacy_sect]
+          activate = 1
+          EOF
+          export OPENSSL_CONF=/tmp/openssl.cnf
+          curl --fail --silent --show-error --insecure \
+            --cert-type P12 \
+            --cert /test-certificates/{{ .Values.tests.certificateKey }} \
+            --pass "$CERTIFICATE_PASSWORD" \
+            https://{{ include "takserver.fullname" . }}-api:8443/Marti/api/version
+      env:
+        - name: CERTIFICATE_PASSWORD
+          value: {{ .Values.tests.certificatePassword | quote }}
+{{- with .Values.containerSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      resources:
+        {{- toYaml .Values.tests.resources | nindent 8 }}
+      volumeMounts:
+        - name: test-certificates
+          mountPath: /test-certificates
+          readOnly: true
+  volumes:
+    - name: test-certificates
+      secret:
+        secretName: {{ default (include "takserver.certificateSecretName" .) .Values.tests.certificateSecret }}
+        items:
+          - key: {{ .Values.tests.certificateKey | quote }}
+            path: {{ .Values.tests.certificateKey | quote }}
+{{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+dependencies:
+- name: traefik
+  repository: https://traefik.github.io/charts
+  version: 41.0.2
+- name: nats
+  repository: https://nats-io.github.io/k8s/helm/charts/
+  version: 2.14.2
+- name: ignite
+  repository: file://subcharts/ignite
+  version: 0.1.0
+digest: sha256:b790536b54a902ae4d5462956b637eddd187ff7f15d9ddf222c1bbc4f4c4d9f6
+generated: "2026-07-24T12:01:22.18718-06:00"

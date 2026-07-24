@@ -1,15 +1,30 @@
-{{- if and (not .Values.config.existing.core) .Values.config.core }}
+{{- if and .Values.config.existing.core .Values.config.existing.coreSecret }}
+{{- fail "config.existing.core and config.existing.coreSecret are mutually exclusive" }}
+{{- end }}
+{{- if and .Values.database.auth.existingSecret .Values.config.generated (not .Values.config.core) (not .Values.config.existing.core) (not .Values.config.existing.coreSecret) }}
+{{- fail "config.generated cannot read database credentials from database.auth.existingSecret; provide config.existing.coreSecret (recommended) or config.core" }}
+{{- end }}
+{{- if and (not .Values.config.existing.core) (not .Values.config.existing.coreSecret) (or .Values.config.core .Values.config.generated) }}
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: {{ include "takserver.coreConfigName" . }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
-data:
-  CoreConfig.xml: |-
-    {{- .Values.config.core | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
 {{- end }}
-{{- if and (not .Values.config.existing.ignite) .Values.config.ignite }}
+type: Opaque
+stringData:
+  {{ .Values.config.existing.coreSecretKey | quote }}: |-
+{{- if .Values.config.core }}
+    {{- tpl .Values.config.core . | nindent 4 }}
+{{- else }}
+    {{- tpl (.Files.Get "files/CoreConfig.xml") . | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- if and (not .Values.config.existing.ignite) (or .Values.config.ignite .Values.config.generated) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -17,9 +32,17 @@ metadata:
   name: {{ include "takserver.igniteConfigName" . }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 data:
   TAKIgniteConfig.xml: |-
-    {{- .Values.config.ignite | nindent 4 }}
+{{- if .Values.config.ignite }}
+    {{- tpl .Values.config.ignite . | nindent 4 }}
+{{- else }}
+    {{- tpl (.Files.Get "files/TAKIgniteConfig.xml") . | nindent 4 }}
+{{- end }}
 {{- end }}
 {{- if not .Values.database.auth.existingSecret }}
 ---
@@ -29,11 +52,15 @@ metadata:
   name: {{ include "takserver.databaseSecretName" . }}
   labels:
 {{ include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 type: Opaque
 stringData:
-  database: {{ .Values.database.auth.database | quote }}
-  username: {{ .Values.database.auth.username | quote }}
-  password: {{ .Values.database.auth.password | quote }}
+  {{ .Values.database.auth.secretKeys.database | quote }}: {{ .Values.database.auth.database | quote }}
+  {{ .Values.database.auth.secretKeys.username | quote }}: {{ .Values.database.auth.username | quote }}
+  {{ .Values.database.auth.secretKeys.password | quote }}: {{ .Values.database.auth.password | quote }}
 {{- end }}
 {{- if and (not .Values.config.existing.certificates) (gt (len .Values.config.certificates) 0) }}
 ---
@@ -43,6 +70,10 @@ metadata:
   name: {{ include "takserver.certificateSecretName" . }}
   labels:
 {{ include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 type: Opaque
 stringData:
 {{- toYaml .Values.config.certificates | nindent 2 }}

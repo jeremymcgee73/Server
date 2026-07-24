@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
     app.kubernetes.io/component: database
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -23,6 +27,10 @@ metadata:
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
     app.kubernetes.io/component: database
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 spec:
   serviceName: {{ include "takserver.fullname" . }}-postgres
   replicas: 1
@@ -35,10 +43,45 @@ spec:
       labels:
         {{- include "takserver.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: database
+{{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/config.yaml") . | sha256sum }}
+{{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+{{- with .Values.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.runtimeClassName }}
+      runtimeClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.schedulerName }}
+      schedulerName: {{ . | quote }}
+{{- end }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.database.embedded.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
       containers:
         - name: postgresql
-          image: "{{ .Values.database.embedded.image.registry }}/{{ .Values.database.embedded.image.repository }}:{{ .Values.database.embedded.image.tag }}"
+          image: {{ include "takserver.databaseImage" .Values.database.embedded.image | quote }}
           imagePullPolicy: {{ .Values.database.embedded.image.pullPolicy }}
           ports:
             - name: postgres
@@ -48,25 +91,54 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: database
+                  key: {{ .Values.database.auth.secretKeys.database | quote }}
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: username
+                  key: {{ .Values.database.auth.secretKeys.username | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: password
+                  key: {{ .Values.database.auth.secretKeys.password | quote }}
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 10
             periodSeconds: 5
+          startupProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 30
+            failureThreshold: 6
+{{- with .Values.database.embedded.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          resources:
+            {{- toYaml .Values.database.embedded.resources | nindent 12 }}
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+{{- with .Values.database.embedded.extraVolumeMounts }}
+{{ toYaml . | nindent 12 }}
+{{- end }}
+{{- if or (not .Values.database.embedded.persistence.enabled) (gt (len .Values.database.embedded.extraVolumes) 0) }}
+      volumes:
+{{- if not .Values.database.embedded.persistence.enabled }}
+        - name: postgres-data
+          emptyDir: {}
+{{- end }}
+{{- with .Values.database.embedded.extraVolumes }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+{{- end }}
 {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -75,17 +147,18 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
+{{- with .Values.database.embedded.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+{{- end }}
       spec:
-        accessModes: ["ReadWriteOnce"]
+        accessModes:
+          {{- toYaml .Values.database.embedded.persistence.accessModes | nindent 10 }}
 {{- with .Values.database.embedded.persistence.storageClass }}
         storageClassName: {{ . | quote }}
 {{- end }}
         resources:
           requests:
             storage: {{ $.Values.database.embedded.persistence.size }}
-{{- else }}
-      volumes:
-        - name: postgres-data
-          emptyDir: {}
 {{- end }}
 {{- end }}

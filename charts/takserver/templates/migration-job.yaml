@@ -2,15 +2,20 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "takserver.fullname" . }}-database-migration
+  name: {{ include "takserver.databaseMigrationJobName" . }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
     app.kubernetes.io/component: database-migration
-{{- if .Values.database.migration.hook }}
+{{- if or .Values.database.migration.hook .Values.commonAnnotations }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade
+{{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- if .Values.database.migration.hook }}
+    helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+{{- end }}
 {{- end }}
 spec:
   backoffLimit: {{ .Values.database.migration.backoffLimit }}
@@ -22,32 +27,75 @@ spec:
       labels:
         {{- include "takserver.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: database-migration
+{{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false
+{{- with .Values.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.runtimeClassName }}
+      runtimeClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.schedulerName }}
+      schedulerName: {{ . | quote }}
+{{- end }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
       containers:
         - name: database-migration
-          image: "{{ .Values.images.databaseSetup.repository }}:{{ .Values.images.databaseSetup.tag }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: {{ include "takserver.image" (dict "image" .Values.images.databaseSetup) | quote }}
+          imagePullPolicy: {{ include "takserver.imagePullPolicy" (dict "root" . "image" .Values.images.databaseSetup) }}
+{{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          resources:
+            {{- toYaml .Values.database.migration.resources | nindent 12 }}
           env:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: database
+                  key: {{ .Values.database.auth.secretKeys.database | quote }}
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: username
+                  key: {{ .Values.database.auth.secretKeys.username | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "takserver.databaseSecretName" . }}
-                  key: password
+                  key: {{ .Values.database.auth.secretKeys.password | quote }}
             - name: POSTGRES_HOST
               value: {{ include "takserver.databaseHost" . | quote }}
             - name: POSTGRES_PORT
               value: {{ include "takserver.databasePort" . | quote }}
+{{- with .Values.database.migration.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.database.migration.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
 {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

@@ -1,11 +1,12 @@
 {{- if eq .Values.exposure.mode "ingress" }}
+{{- $ingressAnnotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.exposure.ingress.annotations }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "takserver.fullname" . }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
-{{- with .Values.exposure.ingress.annotations }}
+{{- with $ingressAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
 {{- end }}
@@ -27,7 +28,11 @@ spec:
               service:
                 name: {{ include "takserver.fullname" . }}-api
                 port:
+{{- if kindIs "string" .Values.exposure.ingress.servicePort }}
                   name: {{ .Values.exposure.ingress.servicePort }}
+{{- else }}
+                  number: {{ .Values.exposure.ingress.servicePort }}
+{{- end }}
 {{- end }}
 {{- if eq .Values.exposure.mode "gateway" }}
 {{- if .Values.exposure.gateway.create }}
@@ -37,6 +42,10 @@ metadata:
   name: {{ required "exposure.gateway.name is required when exposure.gateway.create is true" .Values.exposure.gateway.name }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 spec:
 {{- with .Values.exposure.gateway.className }}
   gatewayClassName: {{ . | quote }}
@@ -58,6 +67,10 @@ metadata:
   name: {{ include "takserver.fullname" . }}
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
+{{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 spec:
   parentRefs:
     - name: {{ required "exposure.gateway.name is required when exposure.mode is gateway" .Values.exposure.gateway.name }}

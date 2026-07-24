@@ -1,5 +1,6 @@
 {{- $serviceType := "ClusterIP" -}}
 {{- if eq .Values.exposure.mode "service" }}{{- $serviceType = .Values.exposure.service.type }}{{- end }}
+{{- $serviceAnnotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.exposure.service.annotations -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,7 +8,7 @@ metadata:
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
     app.kubernetes.io/component: api
-{{- with .Values.exposure.service.annotations }}
+{{- with $serviceAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
 {{- end }}
@@ -37,7 +38,7 @@ metadata:
   labels:
     {{- include "takserver.labels" . | nindent 4 }}
     app.kubernetes.io/component: messaging
-{{- with .Values.exposure.service.annotations }}
+{{- with $serviceAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
 {{- end }}

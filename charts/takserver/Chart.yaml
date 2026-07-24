@@ -5,3 +5,29 @@ type: application
 version: 0.1.0
 appVersion: "5.7"
 kubeVersion: ">=1.27.0-0"
+home: https://github.com/jeremymcgee73/Server
+icon: https://raw.githubusercontent.com/jeremymcgee73/Server/main/src/federation-hub-ui/src/main/webapp-angular/public/tak-logo.png
+sources:
+  - https://github.com/jeremymcgee73/Server
+maintainers:
+  - name: jeremymcgee73
+    url: https://github.com/jeremymcgee73
+keywords:
+  - tak
+  - takserver
+  - situational-awareness
+  - geospatial
+  - defense
+dependencies:
+  - name: traefik
+    version: ~41.0.2
+    repository: https://traefik.github.io/charts
+    condition: traefik.enabled
+  - name: nats
+    version: ~2.14.2
+    repository: https://nats-io.github.io/k8s/helm/charts/
+    condition: nats.enabled
+  - name: ignite
+    version: ~0.1.0
+    repository: file://subcharts/ignite
+    condition: ignite.enabled
